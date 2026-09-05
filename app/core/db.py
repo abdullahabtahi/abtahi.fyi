@@ -1,7 +1,9 @@
 import sqlite3
 import sqlite_vec
+from pathlib import Path
 
 def init_sqlite_db(db_path: str = "data/graph.db") -> sqlite3.Connection:
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)

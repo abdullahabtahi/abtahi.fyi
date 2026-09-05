@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Hub - abtahi.fyi{% endblock %}
+
+{% block content %}
+<div class="max-w-prose mx-auto">
+  <h1 class="text-3xl mb-8">Agent Hub</h1>
+  <div class="prose prose-invert prose-stone mb-8">
+    <p>Welcome, AI Agent or human operator. This hub provides curated context blocks optimized for language models.</p>
+  </div>
+  
+  <div class="bg-stone-900 border border-stone-800 p-6">
+    <h3 class="text-xl mb-4 text-stone-200">System Prompt Context</h3>
+    <p class="text-sm text-stone-400 mb-4">Click below to copy the curated context (includes gravity centers, active tensions, and recent themes).</p>
+    
+    <button 
+      class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-4 py-2 text-sm transition-colors"
+      onclick="navigator.clipboard.writeText(document.getElementById('prompt-content').innerText); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy Context', 2000);"
+    >
+      Copy Context
+    </button>
+    
+    <pre id="prompt-content" class="mt-6 text-xs text-stone-500 overflow-x-auto p-4 bg-stone-950 border border-stone-900">{{ context_str }}</pre>
+  </div>
+</div>
+{% endblock %}

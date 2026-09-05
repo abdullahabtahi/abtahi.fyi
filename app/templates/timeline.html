@@ -1,62 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>abtahi.fyi - Public Context</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 2rem; color: #333; }
-        .item { border-bottom: 1px solid #eee; padding-bottom: 2rem; margin-bottom: 2rem; }
-        .item h2 { margin-bottom: 0.5rem; }
-        .item h2 a { color: #000; text-decoration: none; }
-        .item h2 a:hover { text-decoration: underline; }
-        .meta { color: #666; font-size: 0.9em; margin-bottom: 1rem; }
-        .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-        .tag { background: #f0f0f0; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8em; }
-        .connections { font-size: 0.8em; color: #888; }
-        nav { display: flex; gap: 1rem; margin-bottom: 3rem; border-bottom: 2px solid #000; padding-bottom: 1rem; }
-        nav a { color: #000; font-weight: bold; text-decoration: none; }
-        nav a:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>abtahi.fyi</h1>
-        <p>Public Context Syndication</p>
-    </header>
-    
-    <nav>
-        <a href="/">Timeline</a>
-        <a href="/graph">Graph</a>
-        <a href="/themes">Themes</a>
-        <a href="/tensions">Tensions</a>
-        <a href="/feed.json">JSON Feed</a>
-    </nav>
+{% extends "base.html" %}
 
-    <main>
-        {% for item in items %}
-        <article class="item">
-            <h2><a href="{{ url_for('get_permalink', id=item.id) }}">{{ item.title }}</a></h2>
-            <div class="meta">
-                <time datetime="{{ item.published_at.isoformat() }}">{{ item.published_at.strftime('%B %d, %Y') }}</time>
-                <span class="connections">・ {{ item.connections }} connections</span>
-            </div>
-            
-            <div class="summary">
-                {{ item.summary }}
-            </div>
-            
-            {% if item.tags %}
-            <div class="tags">
-                {% for tag in item.tags %}
-                <span class="tag">#{{ tag }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </article>
-        {% else %}
-        <p>No public context available yet.</p>
+{% block title %}Timeline — abtahi.fyi{% endblock %}
+{% block meta_description %}A private study knowledge graph connecting trusted sources to WorldQuant University concepts through cited, evidence-backed proposals.{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+  <!-- Page heading -->
+  <div class="mb-10 pb-8 border-b border-stone-200">
+    <h1 class="text-3xl font-['Bellefair'] text-stone-900 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Knowledge Timeline
+    </h1>
+    <p class="text-sm font-mono text-stone-400 tabular-nums">
+      Evidence-backed connections to WorldQuant University Module 1
+    </p>
+  </div>
+
+  <!-- Masonry-ish grid of concept cards -->
+  <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5 space-y-5">
+    {% for item in items %}
+    <article class="break-inside-avoid p-5 rounded-xl border border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50 transition-all duration-150 group relative shadow-sm"
+             id="concept-{{ item.id }}">
+
+      <!-- Domain badge -->
+      {% if item.cluster %}
+      <div class="mb-3">
+        <span class="text-[11px] font-mono px-2 py-0.5 rounded border tabular-nums
+          {% if item.cluster == 'AI' %}text-amber-700 bg-amber-50 border-amber-200
+          {% elif item.cluster == 'Cloud' %}text-sky-700 bg-sky-50 border-sky-200
+          {% elif item.cluster == 'Complex Systems' %}text-emerald-700 bg-emerald-50 border-emerald-200
+          {% else %}text-purple-700 bg-purple-50 border-purple-200{% endif %}">
+          {{ item.cluster }}
+        </span>
+      </div>
+      {% endif %}
+
+      <!-- Title -->
+      <h2 class="text-base font-medium text-stone-900 group-hover:text-pink-600 transition-colors leading-snug mb-2">
+        <a href="{{ url_for('get_permalink', id=item.id) }}"
+           class="no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-300 rounded">
+          <span class="absolute inset-0" aria-hidden="true"></span>
+          {{ item.title }}
+        </a>
+      </h2>
+
+      <!-- Summary -->
+      {% if item.summary %}
+      <p class="text-sm text-stone-600 leading-relaxed line-clamp-3 mb-4">
+        {{ item.summary }}
+      </p>
+      {% endif %}
+
+      <!-- Tags -->
+      {% if item.tags %}
+      <div class="flex flex-wrap gap-1.5 mb-4">
+        {% for tag in item.tags %}
+        <span class="px-1.5 py-0.5 bg-stone-100 rounded text-xs font-mono text-stone-500">#{{ tag }}</span>
         {% endfor %}
-    </main>
-</body>
-</html>
+      </div>
+      {% endif %}
+
+      <!-- Footer metadata -->
+      <div class="flex items-center justify-between text-xs font-mono text-stone-400 pt-3 border-t border-stone-100 tabular-nums">
+        <time datetime="{{ item.published_at.isoformat() }}" class="text-stone-400">
+          {{ item.published_at.strftime('%b %d, %Y') }}
+        </time>
+        {% if item.connections %}
+        <span class="flex items-center gap-1">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8L22 12L18 16"/><path d="M2 12H22"/>
+          </svg>
+          {{ item.connections }}
+        </span>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <div class="col-span-full text-center py-24 text-stone-400">
+      <p class="font-mono text-sm italic">No public context available yet.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

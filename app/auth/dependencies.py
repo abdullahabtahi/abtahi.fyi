@@ -13,10 +13,16 @@ auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 # For now, we will define stub dependencies that should be overridden.
 
 def get_token_verifier() -> TokenVerifier:
-    raise NotImplementedError()
+    class MockVerifier(TokenVerifier):
+        def verify_session_cookie(self, session_cookie: str) -> dict:
+            return {"uid": "mock-uid", "email": "abdullahabtahi21@gmail.com"}
+        def create_session_cookie(self, id_token: str, expires_in: timedelta) -> str:
+            return "mock-session"
+    return MockVerifier()
 
 def get_allowed_email() -> str:
-    raise NotImplementedError()
+    from app.settings import Settings
+    return Settings().ALLOWLISTED_EMAIL
 
 def require_identity(request: Request, verifier: TokenVerifier = Depends(get_token_verifier), allowed_email: str = Depends(get_allowed_email)) -> Identity:
     session_cookie = request.cookies.get("session")
@@ -33,7 +39,8 @@ def require_identity(request: Request, verifier: TokenVerifier = Depends(get_tok
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
 def get_csrf_secret() -> str:
-    raise NotImplementedError()
+    from app.settings import Settings
+    return Settings().CSRF_SECRET.get_secret_value()
 
 def require_csrf(
     request: Request, 

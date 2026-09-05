@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Capture - abtahi.fyi{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto h-[80vh] flex flex-col">
+  <h1 class="text-3xl mb-6">Capture & Author</h1>
+  
+  <div class="flex-1 flex flex-col md:flex-row gap-6">
+    <!-- Editor Pane -->
+    <div class="flex-1 flex flex-col bg-stone-900 border border-stone-800 p-4">
+      <h3 class="text-stone-400 mb-2 font-mono text-sm uppercase">Draft</h3>
+      <textarea 
+        class="flex-1 w-full bg-stone-950 text-stone-200 border-none resize-none focus:outline-none p-4"
+        placeholder="Start capturing a thought, tension, or concept..."
+      ></textarea>
+      <div class="mt-4 flex justify-end">
+        <button class="bg-stone-800 text-stone-200 px-6 py-2 hover:bg-stone-700 transition-colors">Save</button>
+      </div>
+    </div>
+    
+    <!-- Copilot Pane -->
+    <div class="w-full md:w-80 flex flex-col bg-stone-900 border border-stone-800 p-4">
+      <h3 class="text-stone-400 mb-2 font-mono text-sm uppercase">AI Copilot</h3>
+      <div class="flex-1 bg-stone-950 p-4 overflow-y-auto mb-4 border border-stone-900">
+        <p class="text-sm text-stone-500 italic">Copilot is ready to assist with edge suggestions, critique, or structural formatting.</p>
+      </div>
+      <input 
+        type="text" 
+        class="w-full bg-stone-950 border border-stone-800 text-stone-200 px-3 py-2 text-sm focus:outline-none focus:border-stone-600"
+        placeholder="Ask the copilot..."
+      >
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     ALLOWLISTED_EMAIL: str = Field(...)
     FIREBASE_COOKIE_NAME: str = Field(default="session")
     SESSION_EXPIRY_DAYS: int = Field(default=14)
+    
+    # AI & Core Settings
+    GEMINI_API_KEY: str | None = Field(default=None)
+    ALLOWED_LEARNER_EMAIL: str = Field(default="abdullah@example.com")
+    PORT: int = Field(default=8000)
+    ENV: str = Field(default="development")
 
     @model_validator(mode='before')
     @classmethod

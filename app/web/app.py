@@ -1,10 +1,48 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from app.auth.dependencies import auth_router
 from app.api.routes_study import study_router
 from app.routers.syndication import router as syndication_router
 from app.routers.admin import router as admin_router
 from app.settings import Settings
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize Database and Graph
+    try:
+        from app.core.db import init_sqlite_db
+        from app.core.network import network_cache
+        from app.core.public_loader import PublicContentLoader
+        
+        # This will create tables and load the vec extension
+        conn = init_sqlite_db()
+        conn.close()
+        logger.info("Database initialized with sqlite-vec.")
+        
+        # Pre-warm the graph
+        loader = PublicContentLoader()
+        items = loader.load_all_items()
+        
+        edges = []
+        for item in items:
+            for out_id in getattr(item, 'outgoing_edges', []):
+                edges.append((item.id, out_id, {"type": "reference"}))
+        
+        network_cache.initialize(edges)
+        logger.info(f"NetworkX graph pre-warmed with {len(items)} items and {len(edges)} edges.")
+    except Exception as e:
+        logger.error(f"Failed to initialize lifespan resources: {e}")
+        
+    yield
+    
+    # Shutdown logic if any
+    pass
 
 def create_app() -> FastAPI:
     settings = Settings()
@@ -12,7 +50,13 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="abtahi.fyi",
         description="Private Compiled Study Pilot",
+        lifespan=lifespan
     )
+    
+    # Mount Static Files
+    static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+    os.makedirs(static_dir, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
     app.state.settings = settings
 

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Signal Review — abtahi.fyi{% endblock %}
+{% block meta_description %}Evidence-backed study proposals connecting current sources to WorldQuant University Module 1 concepts.{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-6 py-12">
+
+  <div class="mb-10 pb-8 border-b border-stone-200">
+    <h1 class="text-2xl font-['Bellefair'] text-stone-900 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Daily Signal Review
+    </h1>
+    <p class="text-sm font-mono text-stone-400">
+      Up to three evidence-backed proposals for today's study session.
+    </p>
+  </div>
+
+  <div id="today-queue">
+    <div class="proposals space-y-6">
+      {% if proposals %}
+        {% for proposal in proposals %}
+        <article class="p-6 rounded-xl border border-stone-200 bg-white shadow-sm" id="proposal-{{ proposal.id }}">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <h2 class="text-base font-medium text-stone-900 leading-snug">{{ proposal.title }}</h2>
+            {% if proposal.cluster %}
+            <span class="shrink-0 text-[11px] font-mono px-2 py-0.5 rounded border tabular-nums
+              {% if proposal.cluster == 'AI' %}text-amber-700 bg-amber-50 border-amber-200
+              {% elif proposal.cluster == 'Cloud' %}text-sky-700 bg-sky-50 border-sky-200
+              {% elif proposal.cluster == 'Complex Systems' %}text-emerald-700 bg-emerald-50 border-emerald-200
+              {% else %}text-purple-700 bg-purple-50 border-purple-200{% endif %}">
+              {{ proposal.cluster }}
+            </span>
+            {% endif %}
+          </div>
+
+          <p class="text-sm text-stone-600 leading-relaxed mb-6">{{ proposal.body }}</p>
+
+          <div class="flex items-center gap-3 pt-4 border-t border-stone-100">
+            <button class="px-4 py-2 text-xs font-mono bg-stone-900 text-white rounded-lg hover:bg-stone-700 transition-colors"
+                    hx-post="/api/v1/study/connect/{{ proposal.id }}"
+                    hx-target="#proposal-{{ proposal.id }}"
+                    hx-swap="outerHTML">
+              Connect
+            </button>
+            <button class="px-4 py-2 text-xs font-mono border border-stone-200 text-stone-600 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-colors"
+                    hx-post="/api/v1/study/defer/{{ proposal.id }}"
+                    hx-target="#proposal-{{ proposal.id }}"
+                    hx-swap="outerHTML">
+              Defer
+            </button>
+            <button class="px-4 py-2 text-xs font-mono text-stone-400 hover:text-stone-600 transition-colors ml-auto"
+                    hx-post="/api/v1/study/dismiss/{{ proposal.id }}"
+                    hx-target="#proposal-{{ proposal.id }}"
+                    hx-swap="outerHTML">
+              Dismiss
+            </button>
+          </div>
+        </article>
+        {% endfor %}
+      {% else %}
+      <div class="py-20 text-center">
+        <p class="text-stone-400 font-mono text-sm italic">No proposals queued for today.</p>
+        <p class="text-stone-300 font-mono text-xs mt-2">Check back tomorrow or ingest new sources.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

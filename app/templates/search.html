@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Search — abtahi.fyi{% endblock %}
+{% block meta_description %}Search across your knowledge graph and evidence archive.{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-6 py-12">
+
+  <div class="mb-8 pb-6 border-b border-stone-200">
+    <h1 class="text-2xl font-['Bellefair'] text-stone-900 tracking-wide mb-1" style="font-family:'Bellefair',serif;font-weight:400;">
+      Search
+    </h1>
+    <p class="text-xs font-mono text-stone-400">Semantic search across concepts and evidence</p>
+  </div>
+
+  <div class="mb-8 relative">
+    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+      <svg class="w-4 h-4 text-stone-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    </div>
+    <input
+      id="search-query"
+      type="text"
+      class="w-full bg-white border border-stone-200 text-stone-800 pl-10 pr-4 py-3 rounded-lg
+             focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-300
+             placeholder:text-stone-400 font-sans text-sm transition-colors"
+      placeholder="Ask a question or search for concepts..."
+      hx-get="/api/semantic"
+      hx-trigger="keyup changed delay:400ms"
+      hx-target="#search-results"
+      name="query"
+      autocomplete="off"
+    >
+  </div>
+
+  <div id="search-results" class="space-y-4">
+    <!-- Results injected here via HTMX -->
+  </div>
+
+</div>
+{% endblock %}

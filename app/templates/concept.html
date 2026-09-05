@@ -1,0 +1,24 @@
+<div id="concept-page" class="p-6 max-w-[68ch] mx-auto">
+  <h1 class="text-2xl font-['Newsreader'] font-medium text-stone-900 mb-2 leading-tight" style="font-family:'Newsreader',serif;">
+    {{ concept.title }}
+  </h1>
+  <div class="text-xs font-mono text-stone-400 mb-8 tabular-nums">{{ concept.module }}</div>
+
+  <div class="synthesis prose prose-stone text-stone-700 leading-relaxed">
+    {{ concept.synthesis }}
+  </div>
+
+  {% if concept.citations %}
+  <details class="mt-8 rounded-lg border border-stone-200 bg-stone-50 overflow-hidden">
+    <summary class="flex items-center gap-2 px-4 py-3 text-xs font-mono text-stone-500 cursor-pointer hover:bg-stone-100 transition-colors select-none">
+      <svg class="w-3.5 h-3.5 text-pink-600 transition-transform open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      Inspect Citations ({{ concept.citations|length }})
+    </summary>
+    <ul class="px-4 py-3 border-t border-stone-200 text-xs font-mono text-stone-600 space-y-2 bg-white list-none">
+      {% for citation in concept.citations %}
+      <li class="text-stone-600">{{ citation }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</div>

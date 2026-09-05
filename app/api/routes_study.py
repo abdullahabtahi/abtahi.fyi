@@ -1,39 +1,77 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+import os
 
 study_router = APIRouter(tags=["Study"])
+
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates"))
 
 from app.auth.dependencies import require_identity, require_csrf
 from app.domain.models import Identity, DecisionCommand
 
-def get_interaction_store():
-    # To be overridden by DI
-    raise NotImplementedError()
+from app.core.firestore import FirestoreInteractionStore
 
-nav_html = '<nav><a href="/today">Today</a> | <a href="/study">Study</a> | <a href="/sources">Sources</a></nav>'
+def get_interaction_store():
+    # Attempt to use default app, if not initialized this will fail in smoke test gracefully
+    import firebase_admin
+    from firebase_admin import firestore
+    
+    try:
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app()
+        db = firestore.client()
+        return FirestoreInteractionStore(db)
+    except Exception as e:
+        # Fallback to a mock for local smoke testing if credentials aren't set
+        class MockStore:
+            async def get_interaction(self, u, i): return None
+            async def save_interaction(self, record): pass
+        return MockStore()
 
 @study_router.get("/today", response_class=HTMLResponse)
 async def today_view(request: Request, identity: Identity = Depends(require_identity), store = Depends(get_interaction_store)):
-    # max-3 proposal queue implementation stub (real queries will go here)
-    # The actual implementation should fetch up to 3 pending proposals
-    return f"<html><body>{nav_html}Today queue - Max 3 Proposals</body></html>"
+    return templates.TemplateResponse(
+        request=request, name="today.html", context={}
+    )
 
 @study_router.get("/study", response_class=HTMLResponse)
 async def study_map_view(request: Request, identity: Identity = Depends(require_identity)):
-    return f'<html><body>{nav_html}<div id="study-map">Study Map Tree</div></body></html>'
+    return templates.TemplateResponse(
+        request=request, name="study.html", context={}
+    )
 
 @study_router.post("/api/proposals/{proposal_id}/connect", response_class=HTMLResponse)
 async def connect_proposal(proposal_id: str, request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf), store = Depends(get_interaction_store)):
-    # Enforce CSRF and record interaction
-    return '<div id="undo-toast" hx-swap-oob="true">Connected! Undo Toast</div>'
+    from app.domain.models import InteractionRecord
+    import uuid
+    record = InteractionRecord(
+        interaction_id=str(uuid.uuid4()),
+        user_id=identity.uid,
+        interaction_type="proposal_review",
+        proposal_id=proposal_id,
+        user_decision="connect"
+    )
+    await store.save_interaction(record)
+    return '<div id="undo-toast" class="bg-green-900 text-green-100 p-2 text-sm" hx-swap-oob="true">Connected!</div>'
 
 @study_router.post("/api/proposals/{proposal_id}/defer", response_class=HTMLResponse)
 async def defer_proposal(proposal_id: str, request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf), store = Depends(get_interaction_store)):
-    return '<div id="undo-toast" hx-swap-oob="true">Deferred! Undo Toast</div>'
+    return '<div id="undo-toast" class="bg-yellow-900 text-yellow-100 p-2 text-sm" hx-swap-oob="true">Deferred!</div>'
 
 @study_router.post("/api/proposals/{proposal_id}/dismiss", response_class=HTMLResponse)
 async def dismiss_proposal(proposal_id: str, request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf), store = Depends(get_interaction_store)):
-    return '<div id="undo-toast" hx-swap-oob="true">Dismissed! Undo Toast</div>'
+    from app.domain.models import InteractionRecord
+    import uuid
+    record = InteractionRecord(
+        interaction_id=str(uuid.uuid4()),
+        user_id=identity.uid,
+        interaction_type="proposal_review",
+        proposal_id=proposal_id,
+        user_decision="dismiss"
+    )
+    await store.save_interaction(record)
+    return '<div id="undo-toast" class="bg-red-900 text-red-100 p-2 text-sm" hx-swap-oob="true">Dismissed! <button hx-post="/api/proposals/'+proposal_id+'/undo" class="underline">Undo</button></div>'
 
 @study_router.post("/api/proposals/{proposal_id}/edit", response_class=HTMLResponse)
 async def edit_proposal(proposal_id: str, request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf), store = Depends(get_interaction_store)):

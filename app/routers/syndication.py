@@ -196,3 +196,45 @@ async def get_themes(request: Request):
             "items": view_items
         }
     )
+
+import random
+
+@router.get("/random")
+async def get_random():
+    items = loader.load_all_items()
+    if not items:
+        raise HTTPException(status_code=404, detail="No items available")
+    item = random.choice(items)
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/i/{item.id}")
+
+@router.get("/about", response_class=HTMLResponse)
+async def get_about(request: Request):
+    return templates.TemplateResponse(request=request, name="about.html", context={})
+
+@router.get("/agents", response_class=HTMLResponse)
+async def get_agents(request: Request):
+    # Construct context string for prompt
+    context_str = "# abtahi.fyi Context\n\n## Gravity Centers\n"
+    pr = network_cache.get_pagerank()
+    top_pr = sorted(pr.items(), key=lambda x: x[1], reverse=True)[:5]
+    items_dict = {item.id: item.title for item in loader.load_all_items()}
+    for node, score in top_pr:
+        if node in items_dict:
+            context_str += f"- {items_dict[node]}\n"
+    
+    return templates.TemplateResponse(request=request, name="agents.html", context={"context_str": context_str})
+
+@router.get("/search", response_class=HTMLResponse)
+async def get_search(request: Request):
+    return templates.TemplateResponse(request=request, name="search.html", context={})
+
+@router.get("/api/semantic")
+async def api_semantic(query: str, request: Request):
+    # This is a stub for the semantic search returning HTMX snippets
+    # A real implementation would call google.genai to embed the query,
+    # then query sqlite-vec using `embedding MATCH :query_vector AND k = 5`
+    
+    html_results = f'<div class="p-4 border border-stone-800 bg-stone-900"><h4 class="text-stone-200">Semantic Search Mock Result</h4><p class="text-sm text-stone-400">Query: "{query}"</p><p class="text-sm text-stone-500 mt-2">To perform real semantic search, the query must be embedded using the Gemini API first.</p></div>'
+    
+    return HTMLResponse(content=html_results)

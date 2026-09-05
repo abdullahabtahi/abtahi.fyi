@@ -1,13 +1,67 @@
+# ── Python ─────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
 .pytest_cache/
 *.egg-info/
 *.py[cod]
+*.pyo
+*.pyd
+dist/
+build/
+*.egg
+.eggs/
+
+# ── Environment / Secrets ───────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
-data/
-firebase-debug.log
+*.env.local
+
+# ── Credentials & Firebase ─────────────────────────────────────────────────────
 service-account*.json
+*-service-account.json
+firebase-admin-*.json
+google-credentials.json
+application_default_credentials.json
+firebase-debug.log
+.firebase/
+firebase.json.bak
+
+# ── Impeccable (design tooling — build artifacts, not source) ──────────────────
+.impeccable/
+# Keep the comp-approved plates that ship in the app
+# assets/plates/ is intentionally tracked
+
+# ── Data / Local DB ────────────────────────────────────────────────────────────
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── macOS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── Editor / IDE ───────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Legacy paths ───────────────────────────────────────────────────────────────
 .superpowers/sdd/
 .worktrees/
+
+# ── Node (Tailwind CLI build artefacts) ────────────────────────────────────────
+node_modules/
+# Keep: tailwind.config.js, app/static/css/input.css, app/static/css/styles.css
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+*.log
+logs/

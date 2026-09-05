@@ -1,0 +1,33 @@
+{
+  "regions": [
+    { "id": "bg-texture", "kind": "texture", "grid": "I0:I0", "note": "clean off-white cardstock background texture" },
+    { "id": "header-title", "kind": "text", "grid": "A0:D0", "note": "abtahi.fyi | Private Study Knowledge Graph" },
+    { "id": "header-nav", "kind": "text", "grid": "G0:J0", "note": "Explore Archives Search Contribute" },
+    { "id": "search-input", "kind": "control", "grid": "D1:G1", "note": "Search Knowledge Base input box" },
+    
+    { "id": "card1-col1", "kind": "text", "grid": "A2:B4", "note": "RESEARCH NOTE QUANTUM MECHANICS card" },
+    { "id": "card2-col1", "kind": "text", "grid": "A5:B6", "note": "RESEARCH NOTE CONCEPT MAP card" },
+    { "id": "card3-col1", "kind": "text", "grid": "A7:B9", "note": "CONCEPT MAP MEDIEVAL ARCHITECTURE card" },
+
+    { "id": "card1-col2", "kind": "text", "grid": "C2:D4", "note": "CONCEPT MAP equation card" },
+    { "id": "card2-col2", "kind": "text", "grid": "C5:D7", "note": "ARTICLE SUMMARY gothic architecture" },
+    { "id": "card2-col2-plate", "kind": "plate", "grid": "D6:D7", "bleed": true, "note": "gothic architecture photo" },
+    { "id": "card3-col2", "kind": "text", "grid": "C8:D9", "note": "RESEARCH NOTE medieval mechanics" },
+
+    { "id": "card1-col3", "kind": "text", "grid": "E2:F4", "note": "RESEARCH NOTE medieval architecture" },
+    { "id": "card2-col3", "kind": "text", "grid": "E5:F6", "note": "CONCEPT MAP gothic style" },
+    { "id": "card3-col3", "kind": "text", "grid": "E7:F9", "note": "ARTICLE SUMMARY text content" },
+    { "id": "card3-col3-plate", "kind": "plate", "grid": "E8:E9", "bleed": true, "note": "architecture ruins photo" },
+
+    { "id": "card1-col4", "kind": "text", "grid": "G2:H4", "note": "ARTICLE SUMMARY quantum mechanics" },
+    { "id": "card2-col4", "kind": "text", "grid": "G5:H6", "note": "CONCEPT MAP structural elements" },
+    { "id": "card3-col4", "kind": "text", "grid": "G7:H9", "note": "RESEARCH NOTE Feynman lectures" },
+
+    { "id": "card1-col5", "kind": "text", "grid": "I2:J4", "note": "ARTICLE SUMMARY principles" },
+    { "id": "card2-col5", "kind": "text", "grid": "I5:J6", "note": "CONCEPT MAP physics" },
+    { "id": "card3-col5", "kind": "text", "grid": "I7:J8", "note": "RESEARCH NOTE archive" },
+
+    { "id": "footer-links", "kind": "text", "grid": "E9:F9", "note": "About Archive Index Terms of Use" },
+    { "id": "footer-copyright", "kind": "text", "grid": "I9:J9", "note": "Copyright abtahi.fyi" }
+  ]
+}

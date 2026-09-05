@@ -1,49 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Graph - abtahi.fyi</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 2rem; color: #333; }
-        nav { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #000; padding-bottom: 1rem; }
-        nav a { color: #000; font-weight: bold; text-decoration: none; }
-        nav a:hover { text-decoration: underline; }
-        #graph-container { width: 100%; height: 600px; background-color: #f9f9f9; border: 1px solid #ddd; }
-    </style>
-    <!-- Use vasturiano/force-graph for rendering -->
-    <script src="https://unpkg.com/force-graph"></script>
-</head>
-<body>
-    <header>
-        <h1>Knowledge Graph</h1>
-        <p>A visual representation of the context syndication graph.</p>
-    </header>
+{% extends "base.html" %}
+
+{% block title %}Graph - abtahi.fyi{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl mb-4">Network Map</h1>
+    <p class="text-stone-400 mb-8">A visual exploration of the conceptual connections within the study corpus.</p>
     
-    <nav>
-        <a href="/">Timeline</a>
-        <a href="/graph">Graph</a>
-        <a href="/themes">Themes</a>
-        <a href="/tensions">Tensions</a>
-        <a href="/feed.json">JSON Feed</a>
-    </nav>
+    <div id="graph-container" class="w-full h-[600px] border border-stone-800 rounded bg-stone-900/50"></div>
+</div>
 
-    <main>
-        <div id="graph-container"></div>
-    </main>
+<!-- Load Force Graph -->
+<script src="https://unpkg.com/force-graph"></script>
 
-    <script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
         const nodes = {{ nodes | tojson | safe }};
         const links = {{ links | tojson | safe }};
-
-        const Graph = ForceGraph()(document.getElementById('graph-container'))
-            .graphData({ nodes: nodes, links: links })
-            .nodeId('id')
+        
+        const elem = document.getElementById('graph-container');
+        
+        // Define aesthetic colors based on The Systems Scriptorium
+        const colorPalette = [
+            '#a8a29e', // stone-400
+            '#78716c', // stone-500
+            '#57534e', // stone-600
+            '#d6d3d1'  // stone-300
+        ];
+        
+        const Graph = ForceGraph()(elem)
+            .graphData({ nodes, links })
             .nodeLabel('title')
-            .nodeAutoColorBy('group')
+            .nodeColor(node => colorPalette[node.group % colorPalette.length])
+            .linkColor(() => '#44403c') // stone-700
+            .nodeRelSize(6)
+            .backgroundColor('#0c0a09') // stone-950
             .onNodeClick(node => {
                 window.location.href = `/i/${node.id}`;
             });
-    </script>
-</body>
-</html>
+            
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            Graph.width(elem.clientWidth).height(elem.clientHeight);
+        });
+    });
+</script>
+{% endblock %}
