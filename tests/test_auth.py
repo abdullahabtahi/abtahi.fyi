@@ -1,0 +1,70 @@
+import pytest
+from fastapi import FastAPI, Depends, Request, Response
+from fastapi.testclient import TestClient
+
+from app.domain.models import Identity, ForbiddenError
+from app.auth.service import verify_allowlisted_identity
+from app.auth.dependencies import require_identity, auth_router, get_token_verifier, get_allowed_email
+from tests.conftest import FakeTokenVerifier
+
+app = FastAPI()
+app.include_router(auth_router)
+
+@app.get("/api/private")
+def private_route(identity: Identity = Depends(require_identity)):
+    return {"status": "ok", "uid": identity.uid}
+
+# Setup overrides
+def override_get_allowed_email():
+    return "owner@example.com"
+
+app.dependency_overrides[get_allowed_email] = override_get_allowed_email
+
+@pytest.fixture
+def test_app(fake_verifier):
+    app.dependency_overrides[get_token_verifier] = lambda: fake_verifier
+    yield app
+    app.dependency_overrides.pop(get_token_verifier, None)
+
+@pytest.fixture
+def client(test_app):
+    return TestClient(test_app, follow_redirects=False)
+
+def test_rejects_verified_token_for_non_allowlisted_email(fake_verifier):
+    fake_verifier.claims = {"uid": "other", "email": "other@example.com", "email_verified": True}
+    with pytest.raises(ForbiddenError):
+        verify_allowlisted_identity(fake_verifier, "fake_token", "owner@example.com")
+
+def test_rejects_unverified_email(fake_verifier):
+    fake_verifier.claims = {"uid": "owner", "email": "owner@example.com", "email_verified": False}
+    with pytest.raises(ForbiddenError):
+        verify_allowlisted_identity(fake_verifier, "fake_token", "owner@example.com")
+
+def test_rejects_missing_session_cookie(client):
+    response = client.get("/api/private")
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/sign-in"
+
+def test_session_exchange_sets_httponly_cookie(client, fake_verifier):
+    response = client.post("/api/auth/session", json={"idToken": "fake_token"})
+    assert response.status_code == 200
+    assert "session=fake_cookie_for_fake_token" in response.headers["set-cookie"]
+    assert "HttpOnly" in response.headers["set-cookie"]
+
+def test_session_exchange_rejects_missing_token(client):
+    response = client.post("/api/auth/session", json={})
+    assert response.status_code == 422 # FastAPI validation error for missing field
+
+def test_private_route_allows_valid_session(client, fake_verifier):
+    fake_verifier.claims = {"uid": "owner", "email": "owner@example.com", "email_verified": True}
+    client.cookies.set("session", "valid_cookie")
+    response = client.get("/api/private")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "uid": "owner"}
+
+def test_identity_uid_comes_from_session_not_request(client, fake_verifier):
+    fake_verifier.claims = {"uid": "owner", "email": "owner@example.com", "email_verified": True}
+    client.cookies.set("session", "valid_cookie")
+    # Even if they try to pass something else, the backend derives from claims
+    response = client.get("/api/private")
+    assert response.json()["uid"] == "owner"

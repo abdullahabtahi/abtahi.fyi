@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>abtahi.fyi - Public Context</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 2rem; color: #333; }
+        .item { border-bottom: 1px solid #eee; padding-bottom: 2rem; margin-bottom: 2rem; }
+        .item h2 { margin-bottom: 0.5rem; }
+        .item h2 a { color: #000; text-decoration: none; }
+        .item h2 a:hover { text-decoration: underline; }
+        .meta { color: #666; font-size: 0.9em; margin-bottom: 1rem; }
+        .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+        .tag { background: #f0f0f0; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8em; }
+        .connections { font-size: 0.8em; color: #888; }
+        nav { display: flex; gap: 1rem; margin-bottom: 3rem; border-bottom: 2px solid #000; padding-bottom: 1rem; }
+        nav a { color: #000; font-weight: bold; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>abtahi.fyi</h1>
+        <p>Public Context Syndication</p>
+    </header>
+    
+    <nav>
+        <a href="/">Timeline</a>
+        <a href="/graph">Graph</a>
+        <a href="/themes">Themes</a>
+        <a href="/tensions">Tensions</a>
+        <a href="/feed.json">JSON Feed</a>
+    </nav>
+
+    <main>
+        {% for item in items %}
+        <article class="item">
+            <h2><a href="{{ url_for('get_permalink', id=item.id) }}">{{ item.title }}</a></h2>
+            <div class="meta">
+                <time datetime="{{ item.published_at.isoformat() }}">{{ item.published_at.strftime('%B %d, %Y') }}</time>
+                <span class="connections">・ {{ item.connections }} connections</span>
+            </div>
+            
+            <div class="summary">
+                {{ item.summary }}
+            </div>
+            
+            {% if item.tags %}
+            <div class="tags">
+                {% for tag in item.tags %}
+                <span class="tag">#{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </article>
+        {% else %}
+        <p>No public context available yet.</p>
+        {% endfor %}
+    </main>
+</body>
+</html>

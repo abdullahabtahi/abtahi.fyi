@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph - abtahi.fyi</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 2rem; color: #333; }
+        nav { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #000; padding-bottom: 1rem; }
+        nav a { color: #000; font-weight: bold; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        #graph-container { width: 100%; height: 600px; background-color: #f9f9f9; border: 1px solid #ddd; }
+    </style>
+    <!-- Use vasturiano/force-graph for rendering -->
+    <script src="https://unpkg.com/force-graph"></script>
+</head>
+<body>
+    <header>
+        <h1>Knowledge Graph</h1>
+        <p>A visual representation of the context syndication graph.</p>
+    </header>
+    
+    <nav>
+        <a href="/">Timeline</a>
+        <a href="/graph">Graph</a>
+        <a href="/themes">Themes</a>
+        <a href="/tensions">Tensions</a>
+        <a href="/feed.json">JSON Feed</a>
+    </nav>
+
+    <main>
+        <div id="graph-container"></div>
+    </main>
+
+    <script>
+        const nodes = {{ nodes | tojson | safe }};
+        const links = {{ links | tojson | safe }};
+
+        const Graph = ForceGraph()(document.getElementById('graph-container'))
+            .graphData({ nodes: nodes, links: links })
+            .nodeId('id')
+            .nodeLabel('title')
+            .nodeAutoColorBy('group')
+            .onNodeClick(node => {
+                window.location.href = `/i/${node.id}`;
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+*.py[cod]
+.env
+.env.*
+!.env.example
+data/
+firebase-debug.log
+service-account*.json
+.superpowers/sdd/
+.worktrees/

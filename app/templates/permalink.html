@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ item.title }} - abtahi.fyi</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 2rem; color: #333; }
+        .item h1 { margin-bottom: 0.5rem; }
+        .meta { color: #666; font-size: 0.9em; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
+        .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        .tag { background: #f0f0f0; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8em; }
+        .content { margin-top: 2rem; }
+        nav { margin-bottom: 3rem; }
+        nav a { color: #000; font-weight: bold; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">← Back to Timeline</a>
+    </nav>
+
+    <main>
+        <article class="item">
+            <h1>{{ item.title }}</h1>
+            <div class="meta">
+                <time datetime="{{ item.published_at.isoformat() }}">{{ item.published_at.strftime('%B %d, %Y') }}</time>
+                <span class="connections">・ {{ item.connections }} connections</span>
+            </div>
+            
+            <div class="content">
+                {{ item.content_html | safe }}
+            </div>
+            
+            {% if item.tags %}
+            <div class="tags">
+                {% for tag in item.tags %}
+                <span class="tag">#{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </article>
+    </main>
+</body>
+</html>

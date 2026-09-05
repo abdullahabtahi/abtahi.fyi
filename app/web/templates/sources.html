@@ -1,0 +1,15 @@
+<div id="sources-archive" class="p-6 max-w-[68ch] mx-auto">
+  <h1 class="text-3xl font-newsreader font-bold mb-6">Source Archive</h1>
+  <div class="sources-list mb-8">
+    <!-- List of immutable sources -->
+  </div>
+  
+  <div class="border-t border-gray-200 pt-6 mt-8">
+    <h3 class="text-xl font-bold mb-4">Add Reflection</h3>
+    <form hx-post="/api/reflections" hx-target="#reflection-result" class="space-y-4">
+      <textarea name="reflection_text" rows="4" class="w-full border rounded p-2 text-sm" placeholder="Reflect on your reading..."></textarea>
+      <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded text-sm font-bold">Submit</button>
+    </form>
+    <div id="reflection-result" class="mt-4 text-green-600 font-bold"></div>
+  </div>
+</div>
