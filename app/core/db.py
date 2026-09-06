@@ -111,5 +111,35 @@ def init_sqlite_db(db_path: str = "data/graph.db") -> sqlite3.Connection:
             report_json TEXT NOT NULL
         );
     """)
+
+    # 4. Curriculum Modules & Timeline Milestones
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS curriculum_milestones (
+            module_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            summary TEXT,
+            concepts_count INTEGER NOT NULL,
+            concept_slugs_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    """)
+
+    # 5. Curriculum Concepts Store
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS curriculum_concepts (
+            slug TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            module_id TEXT NOT NULL,
+            module_title TEXT NOT NULL,
+            summary TEXT,
+            synthesis TEXT,
+            citations_json TEXT NOT NULL DEFAULT '[]',
+            prerequisites_json TEXT NOT NULL DEFAULT '[]',
+            keywords_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL
+        );
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_concepts_module ON curriculum_concepts(module_id);")
     
     return conn
+

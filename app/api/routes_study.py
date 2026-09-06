@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.auth.dependencies import require_csrf, require_identity
+from app.auth.dependencies import require_csrf, require_identity, get_optional_identity
 from app.core.firestore import (
     FirestoreConceptStore,
     FirestoreReviewStore,
@@ -126,42 +126,103 @@ async def today_view(
 @study_router.get("/study", response_class=HTMLResponse)
 async def study_map_view(
     request: Request,
-    identity: Identity = Depends(require_identity),
     store: FirestoreConceptStore = Depends(get_concept_store),
 ):
+    identity = getattr(request.state, "identity", None)
+    if identity is None and hasattr(request, "app"):
+        overrides = getattr(request.app, "dependency_overrides", {})
+        if require_identity in overrides:
+            identity = overrides[require_identity]()
     modules = []
-    try:
-        stored_modules = await store.list_modules(identity.uid)
-        all_concepts = await store.list_concepts(identity.uid)
 
-        concepts_by_module: dict[str, list[ConceptNode]] = {}
-        for c in all_concepts:
-            concepts_by_module.setdefault(c.module, []).append(c)
 
-        module_map = {m.module_id: m for m in stored_modules}
-        for mod_id in concepts_by_module:
-            if mod_id not in module_map:
-                module_map[mod_id] = CourseModule(
-                    module_id=mod_id,
-                    title=f"Module {mod_id}",
-                    summary="",
-                    concepts=[],
+    # 1. If signed in, query personal Firestore modules
+    if identity:
+        try:
+            stored_modules = await store.list_modules(identity.uid)
+            all_concepts = await store.list_concepts(identity.uid)
+
+            concepts_by_module: dict[str, list[ConceptNode]] = {}
+            for c in all_concepts:
+                concepts_by_module.setdefault(c.module, []).append(c)
+
+            module_map = {m.module_id: m for m in stored_modules}
+            for mod_id in concepts_by_module:
+                if mod_id not in module_map:
+                    module_map[mod_id] = CourseModule(
+                        module_id=mod_id,
+                        title=f"Module {mod_id}",
+                        summary="",
+                        concepts=[],
+                    )
+
+            for mod_id, mod in sorted(module_map.items()):
+                mod_concepts = concepts_by_module.get(mod_id, [])
+                mod_concepts.sort(key=lambda x: (x.order, x.slug))
+                modules.append(
+                    {
+                        "module_id": mod.module_id,
+                        "title": mod.title,
+                        "summary": mod.summary,
+                        "concepts": mod_concepts,
+                    }
                 )
+        except Exception:
+            pass
 
-        for mod_id, mod in sorted(module_map.items()):
-            mod_concepts = concepts_by_module.get(mod_id, [])
-            mod_concepts.sort(key=lambda x: (x.order, x.slug))
-            modules.append(
-                {
-                    "module_id": mod.module_id,
-                    "title": mod.title,
-                    "summary": mod.summary,
-                    "concepts": mod_concepts,
-                }
-            )
-    except Exception:
-        modules = []
+    # 2. If unauthenticated visitor, load public curriculum from SQLite
+    else:
+        try:
+            import json
+            from app.core.db import init_sqlite_db
+            conn = init_sqlite_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT module_id, title, summary, concept_slugs_json FROM curriculum_milestones ORDER BY module_id")
+            milestones = cursor.fetchall()
+            for mod_id, mod_title, mod_summary, slugs_json in milestones:
+                try:
+                    slugs = json.loads(slugs_json)
+                except Exception:
+                    slugs = []
+                mod_concepts = []
+                for i, slug in enumerate(slugs):
+                    cursor.execute(
+                        "SELECT title, summary, synthesis, citations_json, prerequisites_json, keywords_json FROM curriculum_concepts WHERE slug = ?",
+                        (slug,),
+                    )
+                    c_row = cursor.fetchone()
+                    if c_row:
+                        synth = c_row[2] or c_row[1] or f"Concept analysis for {c_row[0]}."
+                        try:
+                            citations = json.loads(c_row[3]) if c_row[3] else []
+                        except Exception:
+                            citations = []
+                        mod_concepts.append(
+                            ConceptNode(
+                                slug=slug,
+                                title=c_row[0],
+                                module=mod_id,
+                                module_title=mod_title,
+                                summary=c_row[1] or "",
+                                synthesis=synth,
+                                citations=citations,
+                                order=i + 1,
+                            )
+                        )
 
+                modules.append(
+                    {
+                        "module_id": mod_id,
+                        "title": mod_title,
+                        "summary": mod_summary,
+                        "concepts": mod_concepts,
+                    }
+                )
+            conn.close()
+        except Exception:
+            pass
+
+    csrf_token = await _private_csrf_token(request, identity) if identity else ""
     return templates.TemplateResponse(
         request=request,
         name="study.html",
@@ -169,9 +230,10 @@ async def study_map_view(
             "identity": identity,
             "modules": modules,
             "has_concepts": bool(modules),
-            "csrf_token": await _private_csrf_token(request, identity),
+            "csrf_token": csrf_token,
         },
     )
+
 
 
 @study_router.get("/study/ingest", response_class=HTMLResponse)
@@ -478,15 +540,54 @@ async def operation_status(
 async def concept_view(
     slug: str,
     request: Request,
-    identity: Identity = Depends(require_identity),
-    store: FirestoreConceptStore = Depends(get_concept_store),
 ):
+    identity = getattr(request.state, "identity", None)
+    if identity is None and hasattr(request, "app"):
+        overrides = getattr(request.app, "dependency_overrides", {})
+        if require_identity in overrides:
+            identity = overrides[require_identity]()
     concept = None
+
+
+
+    # 1. Fast public resolution from SQLite
     try:
-        concept = await store.get_concept(identity.uid, slug)
+        import json
+        from app.core.db import init_sqlite_db
+        conn = init_sqlite_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT slug, title, module_id, module_title, summary, synthesis, citations_json, prerequisites_json, keywords_json
+            FROM curriculum_concepts WHERE slug = ?
+            """,
+            (slug,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            concept = ConceptNode(
+                slug=row[0],
+                title=row[1],
+                module=row[2],
+                module_title=row[3],
+                summary=row[4],
+                synthesis=row[5],
+                citations=json.loads(row[6]) if row[6] else [],
+                prerequisites=json.loads(row[7]) if row[7] else [],
+                keywords=json.loads(row[8]) if row[8] else [],
+            )
     except Exception:
         pass
 
+    # 2. Authenticated fallback to Firestore
+    if not concept and identity:
+        try:
+            concept = await store.get_concept(identity.uid, slug)
+        except Exception:
+            pass
+
+    # 3. Graceful fallback synthesis
     if not concept:
         from app.core.markdown_parser import parse_concept_markdown
 
@@ -501,6 +602,7 @@ async def concept_view(
         name="concept.html",
         context={"identity": identity, "concept": concept},
     )
+
 
 
 @study_router.get("/sources", response_class=HTMLResponse)

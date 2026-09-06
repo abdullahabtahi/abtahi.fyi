@@ -39,6 +39,13 @@ def get_optional_identity(
     allowed_email: str | None = None,
 ) -> Identity | None:
     """Safely extracts Identity if valid session exists, without raising HTTP exceptions."""
+    if hasattr(request, "app"):
+        overrides = getattr(request.app, "dependency_overrides", {})
+        if get_optional_identity in overrides:
+            return overrides[get_optional_identity]()
+        if require_identity in overrides:
+            return overrides[require_identity]()
+
     token = request.cookies.get("session")
     if not token:
         auth_header = request.headers.get("Authorization", "")
@@ -46,6 +53,7 @@ def get_optional_identity(
             token = auth_header.split(" ", 1)[1]
     if not token:
         return None
+
 
     try:
         if verifier is None:

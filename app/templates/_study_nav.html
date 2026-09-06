@@ -1,21 +1,28 @@
-{# Reusable Study Workspace Sub-Nav Tab Bar #}
+{% set user = request.state.identity if (request is defined and request.state is defined and request.state.identity) else (identity if identity is defined else None) %}
+{% if user %}
 <nav aria-label="Study Workspace Navigation" class="mb-8 overflow-x-auto no-scrollbar">
     <div class="inline-flex items-center p-1 bg-stone-100 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-xl gap-1">
         <a href="/study"
+           preload="mouseover"
            class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all no-underline shrink-0 {% if active_tab == 'study' %}bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs font-semibold{% else %}text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100{% endif %}">
             <span>Study Map</span>
         </a>
         <a href="/today"
+           preload="mouseover"
            class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all no-underline shrink-0 {% if active_tab == 'today' %}bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs font-semibold{% else %}text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100{% endif %}">
             <span>Today Queue</span>
         </a>
         <a href="/study/ingest"
+           preload="mouseover"
            class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all no-underline shrink-0 {% if active_tab == 'ingest' %}bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs font-semibold{% else %}text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100{% endif %}">
             <span>Ingest Notes</span>
         </a>
         <a href="/sources"
+           preload="mouseover"
            class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all no-underline shrink-0 {% if active_tab == 'sources' %}bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs font-semibold{% else %}text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100{% endif %}">
             <span>Sources Archive</span>
         </a>
     </div>
 </nav>
+{% endif %}
+

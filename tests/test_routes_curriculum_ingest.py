@@ -128,20 +128,40 @@ A chokepoint disables the entire network.
     assert "Single Points of Failure" in concept_resp.text
     assert "A chokepoint disables the entire network" in concept_resp.text
 
+    # 5. Check Timeline / renders the curriculum module milestone and concept pills
+    timeline_resp = client.get("/")
+    assert timeline_resp.status_code == 200
+    assert "curriculum" in timeline_resp.text
+    assert "Foundations of Resilience" in timeline_resp.text
+    assert "/concepts/single-points-of-failure" in timeline_resp.text
+
+    # 6. Check Graph /graph renders the concept node
+    graph_resp = client.get("/graph")
+    assert graph_resp.status_code == 200
+    assert "Single Points of Failure" in graph_resp.text
+    assert "single-points-of-failure" in graph_resp.text
+
+    # 7. Check unauthenticated public learner can view the concept (Option B)
+    unauthed_client = TestClient(client.app)
+    public_concept_resp = unauthed_client.get("/concepts/single-points-of-failure")
+    assert public_concept_resp.status_code == 200
+    assert "Single Points of Failure" in public_concept_resp.text
+
 
 def test_unauthenticated_study_routes_redirect_to_signin():
     app = create_app()
     # Ensure NO dependency overrides for auth
     unauthed_client = TestClient(app)
 
-    # Browser GET requests MUST redirect to /sign-in (HTTP 303)
+    # Public Study Map is accessible to unauthenticated visitors (Option 1)
     resp = unauthed_client.get("/study", follow_redirects=False)
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/sign-in"
+    assert resp.status_code == 200
 
+    # Ingest and admin operations require authentication (HTTP 303 redirect)
     resp_ingest = unauthed_client.get("/study/ingest", follow_redirects=False)
     assert resp_ingest.status_code == 303
     assert resp_ingest.headers["location"] == "/sign-in"
+
 
     # API POST requests without auth MUST redirect or reject
     resp_post = unauthed_client.post(

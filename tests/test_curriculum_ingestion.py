@@ -63,3 +63,32 @@ Partitioning can lead to split-brain if quorum is not enforced.
     assert len(concepts) == 2
     assert concepts[0].slug == "consensus-protocols"
     assert concepts[1].slug == "split-brain-hazard"
+
+
+def test_parse_prerequisites_and_citations():
+    text = """MODULE 1 | LESSON 2
+Cascading Failures and Feedback Loops
+
+1.1 Feedback Loops in Complex Networks
+Positive and negative feedback loops govern system stability across interacting components.
+Prerequisites: direct-network-effects, single-points-of-failure
+Citations: Strogatz (2001) Exploring Complex Networks; Meadows (2008) Thinking in Systems
+
+1.2 Tipping Points
+When feedback crosses a threshold, the system bifurcates.
+Prerequisites: feedback-loops-in-complex-networks
+Source: Scheffer et al. (2009) Early-warning signals for critical transitions
+"""
+    module, concepts = CurriculumIngestionService.parse_curriculum_text(text, fallback_module="M1L2")
+    assert len(concepts) == 2
+    c1 = concepts[0]
+    assert "direct-network-effects" in c1.prerequisites
+    assert "single-points-of-failure" in c1.prerequisites
+    assert len(c1.citations) >= 2
+    assert any("Strogatz" in cit for cit in c1.citations)
+
+    c2 = concepts[1]
+    assert "feedback-loops-in-complex-networks" in c2.prerequisites
+    assert len(c2.citations) >= 1
+    assert any("Scheffer" in cit for cit in c2.citations)
+

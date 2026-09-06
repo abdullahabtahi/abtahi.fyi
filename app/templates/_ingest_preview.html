@@ -16,7 +16,8 @@
 
         <form hx-post="/api/study/ingest/commit"
               hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
-              hx-indicator="#commit-spinner">
+              hx-indicator="#commit-spinner"
+              class="shrink-0">
             <input type="hidden" name="module_id" value="{{ module.module_id }}">
             <input type="hidden" name="content_text" value="{{ content_text }}">
 
@@ -29,11 +30,13 @@
                     Saving to Firestore...
                 </span>
                 <button type="submit"
-                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        id="confirm-commit-btn-top"
+                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-2 font-medium active:scale-[0.99]"
+                        style="background-color: #059669; color: #ffffff;">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    Confirm & Add to Study Map
+                    <span>Confirm & Add to Study Map</span>
                 </button>
             </div>
         </form>
@@ -57,6 +60,28 @@
                 {{ concept.summary }}
             </p>
 
+            {% if concept.prerequisites %}
+            <div class="mb-2 flex flex-wrap items-center gap-1.5">
+                <span class="text-[11px] font-mono text-stone-500 dark:text-stone-400">Prerequisites:</span>
+                {% for prereq in concept.prerequisites %}
+                <span class="px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/60 rounded text-[11px] font-mono">
+                    {{ prereq }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if concept.citations %}
+            <div class="mb-3">
+                <div class="text-[11px] font-mono text-stone-500 dark:text-stone-400 mb-1">Citations &amp; Sources ({{ concept.citations|length }}):</div>
+                <ul class="list-disc list-inside text-[11px] font-mono text-stone-600 dark:text-stone-400 space-y-0.5">
+                    {% for cit in concept.citations %}
+                    <li class="truncate">{{ cit }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
             {% if concept.keywords %}
             <div class="flex flex-wrap gap-1.5">
                 {% for kw in concept.keywords %}
@@ -68,5 +93,39 @@
             {% endif %}
         </div>
         {% endfor %}
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="mt-6 pt-6 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <span class="text-xs font-mono text-stone-500">
+            {{ concepts|length }} concepts ready to commit to your Study Map
+        </span>
+
+        <form hx-post="/api/study/ingest/commit"
+              hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+              hx-indicator="#commit-spinner-bottom"
+              class="shrink-0">
+            <input type="hidden" name="module_id" value="{{ module.module_id }}">
+            <input type="hidden" name="content_text" value="{{ content_text }}">
+
+            <div class="flex items-center gap-3">
+                <span id="commit-spinner-bottom" class="htmx-indicator flex items-center gap-1.5 text-xs font-mono text-stone-500">
+                    <svg class="animate-spin h-3.5 w-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Saving to Firestore...
+                </span>
+                <button type="submit"
+                        id="confirm-commit-btn-bottom"
+                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-2 font-medium active:scale-[0.99]"
+                        style="background-color: #059669; color: #ffffff;">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Confirm & Add to Study Map</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>

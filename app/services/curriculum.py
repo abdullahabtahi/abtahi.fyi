@@ -122,10 +122,42 @@ class CurriculumIngestionService:
             slug = slugify(title)
             body = sec["body"]
             
+            # Extract prerequisites and citations from body lines
+            prerequisites: list[str] = []
+            citations: list[str] = []
+            clean_body_lines: list[str] = []
+
+            for bline in body.splitlines():
+                stripped = bline.strip()
+                prereq_match = re.match(r"^(?:prerequisites|prereqs|requires|depends on)\s*[:\t]\s*(.+)$", stripped, re.IGNORECASE)
+                citation_match = re.match(r"^(?:citations?|references?|sources?)\s*[:\t]\s*(.+)$", stripped, re.IGNORECASE)
+                bracket_cite_match = re.match(r"^\[\d+\]\s+(.+)$", stripped)
+
+                if prereq_match:
+                    raw_prereqs = prereq_match.group(1)
+                    for item in re.split(r"[,;]", raw_prereqs):
+                        item_slug = slugify(item.strip())
+                        if item_slug and item_slug not in prerequisites:
+                            prerequisites.append(item_slug)
+                elif citation_match:
+                    raw_cites = citation_match.group(1)
+                    for item in re.split(r"[;]", raw_cites):
+                        cit = item.strip()
+                        if cit and cit not in citations:
+                            citations.append(cit)
+                elif bracket_cite_match:
+                    cit = stripped
+                    if cit not in citations:
+                        citations.append(cit)
+                else:
+                    clean_body_lines.append(bline)
+
+            clean_body = "\n".join(clean_body_lines).strip()
+
             # Extract first non-empty paragraph as summary
-            paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
+            paragraphs = [p.strip() for p in clean_body.split("\n\n") if p.strip()]
             summary = paragraphs[0] if paragraphs else f"Core principles of {title}"
-            # Limit summary to ~250 chars for UI badges/tooltips
+            # Limit summary to ~280 chars for UI badges/tooltips
             if len(summary) > 280:
                 summary = summary[:277] + "..."
                 
@@ -144,9 +176,9 @@ class CurriculumIngestionService:
                 module_title=module_title,
                 synthesis=body or summary,
                 summary=summary,
-                citations=[],
+                citations=citations,
                 keywords=concept_keywords,
-                prerequisites=[],
+                prerequisites=prerequisites,
                 order=idx,
                 created_at=now,
             )
@@ -186,10 +218,63 @@ class CurriculumIngestionService:
                     "module_id": module.module_id,
                     "title": module.title,
                     "length": len(raw_source_text),
-                    "created_at": datetime.now(timezone.utc).isoformat(),
                 },
             )
+
+        # 1. Update in-memory NetworkX graph singleton
+        from app.core.network import network_cache
+        network_cache.add_curriculum_module(module.module_id, module.title, concepts)
+
+        # 2. Persist to local SQLite for instant cold boot, timeline milestone, and search
+        try:
+            import json
+            from app.core.db import init_sqlite_db
+            conn = init_sqlite_db()
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor = conn.cursor()
             
+            concept_slugs = [c.slug for c in concepts]
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO curriculum_milestones
+                (module_id, title, summary, concepts_count, concept_slugs_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    module.module_id,
+                    module.title,
+                    module.summary or f"Contains {len(concepts)} key concepts.",
+                    len(concepts),
+                    json.dumps(concept_slugs),
+                    now_iso,
+                ),
+            )
+
+            for concept in concepts:
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO curriculum_concepts
+                    (slug, title, module_id, module_title, summary, synthesis, citations_json, prerequisites_json, keywords_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        concept.slug,
+                        concept.title,
+                        module.module_id,
+                        module.title,
+                        concept.summary or "",
+                        concept.synthesis or "",
+                        json.dumps(concept.citations or []),
+                        json.dumps(concept.prerequisites or []),
+                        json.dumps(concept.keywords or []),
+                        now_iso,
+                    ),
+                )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
         return {
             "status": "committed",
             "module_id": module.module_id,

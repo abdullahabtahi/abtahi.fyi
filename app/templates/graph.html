@@ -1,82 +1,380 @@
 {% extends "base.html" %}
 
 {% block title %}Network Map — abtahi.fyi{% endblock %}
-{% block meta_description %}Interactive force-directed graph visualizing conceptual relationships across notes, links, and emergent themes.{% endblock %}
+{% block meta_description %}Interactive full-screen force-directed graph visualizing conceptual relationships across notes, links, and curriculum concepts.{% endblock %}
 
-{% block content %}
-<div class="max-w-4xl mx-auto py-10 px-4 sm:px-0">
-    <header class="mb-8">
-        <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
-            Network Map
-        </h1>
-        <p class="text-sm font-serif text-stone-600 dark:text-stone-400">
-            A visual exploration of conceptual connections across notes, links, and emergent themes.
-        </p>
-    </header>
-    
-    <div class="relative rounded-xl border border-stone-200 dark:border-stone-800 overflow-hidden shadow-sm">
-        <div id="graph-container" class="w-full h-[600px] bg-stone-50 dark:bg-stone-950"></div>
-        
-        <!-- Subtle Help Pill -->
-        <div class="absolute bottom-4 left-4 text-[11px] font-mono text-stone-500 dark:text-stone-400 bg-white/80 dark:bg-stone-900/80 backdrop-blur px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-800 shadow-sm pointer-events-none">
-            Click node to view article &bull; Drag to explore
-        </div>
+{% block extra_head %}
+<!-- Preload D3 v7 synchronously in head so simulation executes instantly -->
+<script src="/static/js/d3.v7.min.js"></script>
+{% endblock %}
+
+{% block body_classes %}!bg-[#1a1a1a] !overflow-hidden h-screen fixed inset-0{% endblock %}
+{% block header_classes %}fixed top-0 inset-x-0 py-3 z-30 bg-[#1a1a1a]/90 backdrop-blur-md border-b border-stone-800/60 text-stone-200 transition-colors duration-200{% endblock %}
+{% block header_container_classes %}max-w-7xl mx-auto px-6{% endblock %}
+{% block main_classes %}overflow-hidden p-0 m-0 w-screen h-screen absolute inset-0{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block main_content %}
+<style>
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #1a1a1a !important;
+        color: #e0e0e0 !important;
+        overflow: hidden !important;
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+    #graph-container {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #1a1a1a;
+        overflow: hidden;
+    }
+    #graph {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+    }
+    #tooltip {
+        position: fixed;
+        background: rgba(42, 42, 42, 0.96);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        max-width: 340px;
+        z-index: 100;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    #tooltip .tt-title {
+        font-family: 'Newsreader', Georgia, serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        line-height: 1.35;
+        margin-bottom: 0.3rem;
+        color: #fff;
+    }
+    #tooltip .tt-type {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 0.35rem;
+    }
+    #tooltip .tt-reason {
+        font-size: 0.75rem;
+        color: #bbb;
+        font-style: italic;
+        margin-top: 0.25rem;
+        line-height: 1.35;
+    }
+    #legend {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 1.5rem;
+        font-size: 0.75rem;
+        background: rgba(42, 42, 42, 0.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        border: 1px solid #444;
+        z-index: 20;
+        font-family: 'JetBrains Mono', monospace;
+        color: #d4d4d8;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        pointer-events: auto;
+    }
+    #legend .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+    #legend .legend-item:last-child {
+        margin-bottom: 0;
+    }
+    #legend .legend-swatch {
+        width: 20px;
+        height: 3px;
+        border-radius: 2px;
+    }
+    #zoom-controls {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    #zoom-controls button {
+        background: rgba(42, 42, 42, 0.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid #444;
+        color: #e0e0e0;
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    #zoom-controls button:hover {
+        background: rgba(55, 55, 55, 0.95);
+        color: #ffffff;
+        border-color: #666;
+    }
+    #zoom-controls button#zoom-reset-btn {
+        width: auto;
+        padding: 0 8px;
+        font-size: 11px;
+    }
+    .node-label {
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 9px;
+        fill: #999;
+        pointer-events: none;
+        user-select: none;
+        transition: opacity 0.15s ease;
+    }
+</style>
+
+<div id="graph-container">
+    <svg id="graph"></svg>
+    <div id="tooltip"></div>
+    <div id="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#f06595"></div> supports</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#ffd43b"></div> challenges</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#69db7c"></div> develops into</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#666"></div> related</div>
     </div>
+    <div id="zoom-controls">
+        <button id="zoom-in-btn" aria-label="Zoom in" title="Zoom In">+</button>
+        <button id="zoom-out-btn" aria-label="Zoom out" title="Zoom Out">−</button>
+        <button id="zoom-reset-btn" aria-label="Reset zoom" title="Reset View">Reset</button>
+    </div>
+
+    <!-- Accessible Tabular Fallback for Screen Readers & Automated Testing -->
+    <section class="sr-only" aria-label="Tabular Concept Graph">
+        <h2>Concept &amp; Community Index</h2>
+        <p>Accessible, structured listing of all active graph nodes and community clusters.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">Type</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Cluster</th>
+                    <th scope="col">Route</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node in nodes %}
+                <tr>
+                    <td>{{ node.node_type }}</td>
+                    <td><a href="{{ node.url }}">{{ node.title }}</a></td>
+                    <td>Cluster {{ node.group }}</td>
+                    <td><a href="{{ node.url }}">{{ node.url }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
 </div>
 
-<!-- Load Force Graph -->
-<script src="https://unpkg.com/force-graph"></script>
-
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const nodes = {{ nodes | tojson | safe }};
-        const links = {{ links | tojson | safe }};
-        const elem = document.getElementById('graph-container');
-        if (!elem) return;
-
-        function isDarkMode() {
-            return document.documentElement.classList.contains('dark');
+(function() {
+    function initD3Graph() {
+        if (typeof d3 === 'undefined') {
+            // Re-check after 20ms if script is still parsing
+            setTimeout(initD3Graph, 20);
+            return;
         }
 
-        const darkBg = '#0c0a09';
-        const lightBg = '#fafaf9';
-        const darkNode = '#e7e5e4';
-        const lightNode = '#292524';
-        const darkLink = '#44403c';
-        const lightLink = '#d6d3d1';
+        const data = {
+            nodes: {{ nodes | tojson | safe }},
+            links: {{ links | tojson | safe }}
+        };
 
-        const Graph = ForceGraph()(elem)
-            .width(elem.clientWidth)
-            .height(elem.clientHeight)
-            .graphData({ nodes, links })
-            .nodeLabel('title')
-            .nodeColor(() => isDarkMode() ? darkNode : lightNode)
-            .linkColor(() => isDarkMode() ? darkLink : lightLink)
-            .nodeRelSize(7)
-            .backgroundColor(isDarkMode() ? darkBg : lightBg)
-            .onNodeClick(node => {
-                window.location.href = `/i/${node.id}`;
+        const edgeColors = {
+            "supports": "#f06595",
+            "challenges": "#ffd43b",
+            "develops_into": "#69db7c",
+            "prerequisite_for": "#69db7c",
+            "related_to": "#666",
+            "related": "#666",
+            "superseded_by": "#ff8c42",
+            "corrected_by": "#da77f2"
+        };
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const svg = d3.select("#graph").attr("width", width).attr("height", height);
+        svg.selectAll("*").remove(); // Clear on re-init
+        const g = svg.append("g");
+
+        const zoom = d3.zoom().scaleExtent([0.25, 5]).on("zoom", e => g.attr("transform", e.transform));
+        svg.call(zoom);
+
+        const simulation = d3.forceSimulation(data.nodes)
+            .force("link", d3.forceLink(data.links).id(d => d.id).distance(120))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(30));
+
+        const link = g.append("g").selectAll("line").data(data.links).join("line")
+            .attr("stroke", d => edgeColors[d.type] || "#555")
+            .attr("stroke-opacity", d => (d.type === "related_to" || d.type === "related") ? 0.3 : 0.6)
+            .attr("stroke-width", d => (d.type === "related_to" || d.type === "related") ? 1 : 2);
+
+        const node = g.append("g").selectAll("circle").data(data.nodes).join("circle")
+            .attr("r", 6)
+            .attr("fill", "#f06595")
+            .attr("stroke", "#2a2a2a")
+            .attr("stroke-width", 1.5)
+            .style("cursor", "pointer")
+            .call(d3.drag()
+                .on("start", (e, d) => {
+                    if (!e.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                })
+                .on("drag", (e, d) => {
+                    d.fx = e.x;
+                    d.fy = e.y;
+                })
+                .on("end", (e, d) => {
+                    if (!e.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                })
+            );
+
+        const labels = g.append("g").selectAll("text").data(data.nodes).join("text")
+            .attr("class", "node-label")
+            .attr("dx", 10)
+            .attr("dy", 3)
+            .text(d => d.title && d.title.length > 35 ? d.title.substring(0, 35) + "..." : (d.title || d.id))
+            .style("opacity", 0.4);
+
+        const tooltip = d3.select("#tooltip");
+
+        node.on("mouseover", function(event, d) {
+            d3.select(this).attr("r", 10).attr("fill", "#ff8787");
+            link.attr("stroke-opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.1)
+                .attr("stroke-width", l => (l.source.id === d.id || l.target.id === d.id) ? 3 : 1);
+
+            const connected = new Set();
+            data.links.forEach(l => {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                if (s === d.id) connected.add(t);
+                if (t === d.id) connected.add(s);
+            });
+            connected.add(d.id);
+
+            node.style("opacity", n => connected.has(n.id) ? 1 : 0.2);
+            labels.style("opacity", n => connected.has(n.id) ? 1 : 0);
+
+            const conns = data.links.filter(l => {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                return s === d.id || t === d.id;
             });
 
-        // Center graph after physics warm-up
-        setTimeout(() => {
-            Graph.zoomToFit(500, 60);
-        }, 350);
-            
-        // Resize handling
-        window.addEventListener('resize', () => {
-            Graph.width(elem.clientWidth).height(elem.clientHeight);
-            Graph.zoomToFit(400, 60);
+            let tt = `<div class="tt-title">${d.title || d.id}</div><div class="tt-type">${d.node_type || d.type || 'concept'} · ${conns.length} connections</div>`;
+            const informative = conns.filter(c => c.type !== "related_to" && c.type !== "related" && c.reason).slice(0, 3);
+            if (informative.length > 0) {
+                informative.forEach(c => {
+                    const typeLabel = (c.type || '').replace(/_/g, ' ');
+                    tt += `<div class="tt-reason">${typeLabel}: ${c.reason}</div>`;
+                });
+            } else if (conns.length > 0) {
+                conns.slice(0, 2).forEach(c => {
+                    const s = typeof c.source === 'object' ? c.source.id : c.source;
+                    const otherId = s === d.id ? (typeof c.target === 'object' ? c.target.id : c.target) : s;
+                    const otherNode = data.nodes.find(n => n.id === otherId);
+                    const otherTitle = otherNode ? otherNode.title : otherId;
+                    const typeLabel = (c.type || 'related').replace(/_/g, ' ');
+                    tt += `<div class="tt-reason">${typeLabel}: ${otherTitle}</div>`;
+                });
+            }
+
+            const tipWidth = 340;
+            const x = Math.min(window.innerWidth - tipWidth - 20, Math.max(20, event.pageX + 15));
+            const y = Math.min(window.innerHeight - 220, Math.max(70, event.pageY - 10));
+            tooltip.html(tt).style("left", x + "px").style("top", y + "px").style("opacity", 1);
+        }).on("mouseout", function() {
+            d3.select(this).attr("r", 6).attr("fill", "#f06595");
+            link.attr("stroke-opacity", d => (d.type === "related_to" || d.type === "related") ? 0.3 : 0.6)
+                .attr("stroke-width", d => (d.type === "related_to" || d.type === "related") ? 1 : 2);
+            node.style("opacity", 1);
+            labels.style("opacity", 0.4);
+            tooltip.style("opacity", 0);
+        }).on("click", (e, d) => {
+            if (d.url) {
+                window.location.href = d.url;
+            } else if (d.node_type === 'concept') {
+                window.location.href = `/concepts/${d.id}`;
+            } else {
+                window.location.href = `/i/${d.id}`;
+            }
         });
 
-        // Sync with Theme Toggle
-        const observer = new MutationObserver(() => {
-            const dark = isDarkMode();
-            Graph.backgroundColor(dark ? darkBg : lightBg);
-            Graph.nodeColor(() => dark ? darkNode : lightNode);
-            Graph.linkColor(() => dark ? darkLink : lightLink);
+        simulation.on("tick", () => {
+            link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+            node.attr("cx", d => d.x).attr("cy", d => d.y);
+            labels.attr("x", d => d.x).attr("y", d => d.y);
         });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    });
+
+        // Zoom controls
+        document.getElementById('zoom-in-btn')?.addEventListener('click', () => {
+            svg.transition().duration(300).call(zoom.scaleBy, 1.35);
+        });
+        document.getElementById('zoom-out-btn')?.addEventListener('click', () => {
+            svg.transition().duration(300).call(zoom.scaleBy, 0.75);
+        });
+        document.getElementById('zoom-reset-btn')?.addEventListener('click', () => {
+            svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+        });
+
+        window.addEventListener('resize', () => {
+            const newW = window.innerWidth;
+            const newH = window.innerHeight;
+            svg.attr("width", newW).attr("height", newH);
+            simulation.force("center", d3.forceCenter(newW / 2, newH / 2));
+            simulation.alpha(0.2).restart();
+        });
+
+        // Keyboard navigation: Escape key exits to Timeline
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = '/';
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initD3Graph);
+    } else {
+        initD3Graph();
+    }
+})();
 </script>
 {% endblock %}

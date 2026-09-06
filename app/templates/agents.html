@@ -1,26 +1,100 @@
 {% extends "base.html" %}
 
-{% block title %}Agent Hub - abtahi.fyi{% endblock %}
+{% block title %}Instructions for Your Agent — abtahi.fyi{% endblock %}
 
 {% block content %}
-<div class="max-w-prose mx-auto">
-  <h1 class="text-3xl mb-8">Agent Hub</h1>
-  <div class="prose prose-invert prose-stone mb-8">
-    <p>Welcome, AI Agent or human operator. This hub provides curated context blocks optimized for language models.</p>
-  </div>
-  
-  <div class="bg-stone-900 border border-stone-800 p-6">
-    <h3 class="text-xl mb-4 text-stone-200">System Prompt Context</h3>
-    <p class="text-sm text-stone-400 mb-4">Click below to copy the curated context (includes gravity centers, active tensions, and recent themes).</p>
-    
-    <button 
-      class="bg-stone-800 hover:bg-stone-700 text-stone-200 px-4 py-2 text-sm transition-colors"
-      onclick="navigator.clipboard.writeText(document.getElementById('prompt-content').innerText); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy Context', 2000);"
-    >
-      Copy Context
-    </button>
-    
-    <pre id="prompt-content" class="mt-6 text-xs text-stone-500 overflow-x-auto p-4 bg-stone-950 border border-stone-900">{{ context_str }}</pre>
-  </div>
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <article>
+    <header class="mb-8">
+      <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-3" style="font-family:'Newsreader',serif;font-weight:500;">
+        Instructions for Your Agent
+      </h1>
+      <p class="text-stone-600 dark:text-stone-400 text-sm leading-relaxed max-w-2xl">
+        If you're working with an AI agent (Claude, ChatGPT, Gemini, Copilot, or your personal assistant), you can give it context about who I am, what I'm thinking about, and how to access this site. Copy the instructions below and add them to your agent's context.
+      </p>
+    </header>
+
+    <div class="mb-8">
+      <button 
+        id="copy-btn"
+        onclick="copyInstructions()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 text-xs font-mono font-medium rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+      >
+        Copy agent instructions
+      </button>
+    </div>
+
+    <details open class="mb-12">
+      <summary class="cursor-pointer text-xs font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 select-none mb-3 inline-flex items-center gap-1.5">
+        <span>Preview what your agent will receive</span>
+        <span class="text-[10px] text-stone-400 dark:text-stone-500 font-mono">(click to collapse)</span>
+      </summary>
+      <pre id="instructions" class="p-6 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs font-mono text-stone-800 dark:text-stone-200 leading-relaxed overflow-x-auto whitespace-pre-wrap selection:bg-stone-200 dark:selection:bg-stone-800">{{ context_str }}</pre>
+    </details>
+
+    <!-- Query API Quick Reference for Human Developers & Agent Tool Builders -->
+    <div class="bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 rounded-xl p-6 mb-12">
+      <h2 class="text-base font-medium text-stone-900 dark:text-stone-100 mb-2">
+        Public Query API Overview
+      </h2>
+      <p class="text-xs text-stone-600 dark:text-stone-400 mb-4 leading-relaxed">
+        All endpoints are read-only, freely accessible with no authentication or API keys required, and return typed JSON.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+        <a href="/api/fyi/q/summary" target="_blank" class="p-3 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg hover:border-stone-400 dark:hover:border-stone-600 transition-colors no-underline block">
+          <div class="text-stone-900 dark:text-stone-100 font-medium mb-1">GET /api/fyi/q/summary</div>
+          <div class="text-stone-500 text-[11px]">Snapshot of top connected concepts &amp; graph tensions.</div>
+        </a>
+        <a href="/api/fyi/q/items" target="_blank" class="p-3 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg hover:border-stone-400 dark:hover:border-stone-600 transition-colors no-underline block">
+          <div class="text-stone-900 dark:text-stone-100 font-medium mb-1">GET /api/fyi/q/items</div>
+          <div class="text-stone-500 text-[11px]">Paginated feed of notes, links, and essays.</div>
+        </a>
+        <a href="/api/fyi/q/edges?type=challenges" target="_blank" class="p-3 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg hover:border-stone-400 dark:hover:border-stone-600 transition-colors no-underline block">
+          <div class="text-stone-900 dark:text-stone-100 font-medium mb-1">GET /api/fyi/q/edges?type=challenges</div>
+          <div class="text-stone-500 text-[11px]">All active dialectical tension relationships across the graph.</div>
+        </a>
+        <a href="/openapi.json" target="_blank" class="p-3 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg hover:border-stone-400 dark:hover:border-stone-600 transition-colors no-underline block">
+          <div class="text-stone-900 dark:text-stone-100 font-medium mb-1">GET /openapi.json</div>
+          <div class="text-stone-500 text-[11px]">OpenAPI 3.1 schema defining all public syndication contracts.</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Developer & Agent Sub-Footer -->
+    <div class="pt-6 border-t border-stone-200 dark:border-stone-800 text-xs font-mono text-stone-500 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <span>For agents &amp; developers: </span>
+        <a href="/docs" class="text-stone-700 dark:text-stone-300 hover:underline">API &amp; docs</a> · 
+        <a href="/agents" class="text-stone-700 dark:text-stone-300 hover:underline font-medium">agent instructions</a> · 
+        <a href="/openapi.json" class="text-stone-700 dark:text-stone-300 hover:underline">OpenAPI</a> · 
+        <a href="/llms.txt" class="text-stone-700 dark:text-stone-300 hover:underline">llms.txt</a> · 
+        <a href="/feed.json" class="text-stone-700 dark:text-stone-300 hover:underline">JSON feed</a>
+      </div>
+      <div>
+        <a href="/" class="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors no-underline">← home</a>
+      </div>
+    </div>
+  </article>
 </div>
+
+<script>
+function copyInstructions() {
+    var pre = document.getElementById('instructions');
+    var text = pre ? pre.textContent : '';
+    if (!text) return;
+
+    navigator.clipboard.writeText(text).then(function() {
+        var btn = document.getElementById('copy-btn');
+        if (!btn) return;
+        var originalText = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('bg-emerald-700', 'dark:bg-emerald-600', 'text-white');
+        setTimeout(function() {
+            btn.textContent = originalText;
+            btn.classList.remove('bg-emerald-700', 'dark:bg-emerald-600', 'text-white');
+        }, 2000);
+    });
+}
+</script>
 {% endblock %}

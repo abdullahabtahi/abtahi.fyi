@@ -25,8 +25,7 @@ def initialize_projection() -> None:
 
     conn = init_sqlite_db()
     try:
-        # Check if pre-computed snapshot exists in SQLite for <1ms cold boot
-        network_cache.load_snapshot_from_db(conn)
+        network_cache.load_curriculum_from_db(conn)
         loader = PublicContentLoader()
         items = loader.load_all_items()
         network_cache.load_from_items(items)
@@ -94,6 +93,31 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+        if "Cache-Control" not in response.headers:
+            path = request.url.path
+            if path.startswith("/static/"):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            elif any(
+                path.startswith(p)
+                for p in [
+                    "/study",
+                    "/today",
+                    "/sources",
+                    "/concepts",
+                    "/api/study",
+                    "/api/today",
+                    "/api/sources",
+                    "/api/concepts",
+                    "/api/proposals",
+                    "/api/operations",
+                    "/api/reflections",
+                ]
+            ):
+                response.headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate"
+            elif request.method == "GET" and response.status_code == 200:
+                response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+
         return response
     
     # Mount Static Files

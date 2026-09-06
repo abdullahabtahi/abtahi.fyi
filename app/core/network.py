@@ -25,6 +25,8 @@ class NetworkScienceCache:
         self._betweenness_cache: dict[str, float] = {}
         self._communities_cache: list[set[str]] = []
         self._cached_snapshot: Optional[GraphSnapshot] = None
+        self._curriculum_cache: dict[str, dict] = {}       # slug -> concept dict
+        self._curriculum_modules: dict[str, dict] = {}     # module_id -> module dict
 
     def initialize(self, edges: list[tuple[str, str, dict]]):
         """
@@ -34,15 +36,101 @@ class NetworkScienceCache:
         self.G.clear()
         for u, v, attrs in edges:
             self.G.add_edge(u, v, **attrs)
+        self._reapply_curriculum()
         self.precompute_metrics()
+
+    def _reapply_curriculum(self):
+        """Re-applies all cached curriculum concept nodes and edges with rich inter-connections."""
+        for slug, concept in self._curriculum_cache.items():
+            self.G.add_node(
+                slug,
+                title=concept.get("title", slug),
+                item_type="concept",
+                node_type="concept",
+                module_id=concept.get("module_id", ""),
+                module_title=concept.get("module_title", ""),
+                summary=concept.get("summary", ""),
+                plane="shared",
+            )
+            for prereq in concept.get("prerequisites", []):
+                if prereq:
+                    self.G.add_edge(
+                        prereq,
+                        slug,
+                        edge_type="prerequisite_for",
+                        reason=f"Prerequisite for {concept.get('title', slug)}",
+                        confidence=1.0,
+                        plane="shared",
+                    )
+
+        # 1. Re-apply sequential progressions within each module
+        sorted_mod_ids = sorted(self._curriculum_modules.keys())
+        for mod_id in sorted_mod_ids:
+            mod_info = self._curriculum_modules[mod_id]
+            slugs = mod_info.get("concept_slugs", [])
+            for i in range(len(slugs) - 1):
+                u, v = slugs[i], slugs[i + 1]
+                if u and v and not self.G.has_edge(u, v):
+                    self.G.add_edge(
+                        u,
+                        v,
+                        edge_type="develops_into",
+                        reason=f"Progression in {mod_info.get('title', mod_id)}",
+                        confidence=1.0,
+                        plane="shared",
+                    )
+
+        # 2. Inter-module progression bridges (connecting consecutive modules)
+        for i in range(len(sorted_mod_ids) - 1):
+            cur_mod = self._curriculum_modules[sorted_mod_ids[i]]
+            next_mod = self._curriculum_modules[sorted_mod_ids[i + 1]]
+            cur_slugs = cur_mod.get("concept_slugs", [])
+            next_slugs = next_mod.get("concept_slugs", [])
+            if cur_slugs and next_slugs:
+                bridge_u = cur_slugs[-1]
+                bridge_v = next_slugs[0]
+                if bridge_u and bridge_v and not self.G.has_edge(bridge_u, bridge_v):
+                    self.G.add_edge(
+                        bridge_u,
+                        bridge_v,
+                        edge_type="develops_into",
+                        reason=f"Curriculum progression from {cur_mod.get('title', sorted_mod_ids[i])} to {next_mod.get('title', sorted_mod_ids[i+1])}",
+                        confidence=1.0,
+                        plane="shared",
+                    )
+
+        # 3. Cross-connect concepts with public notes/links based on conceptual affinity
+        for slug, concept in self._curriculum_cache.items():
+            c_text = f"{concept.get('title', '')} {concept.get('summary', '')}".lower()
+            for public_node, p_data in list(self.G.nodes(data=True)):
+                if p_data.get("plane") == "public":
+                    p_title = p_data.get("title", "").lower()
+                    # Check thematic overlaps (e.g. system, architecture, failure, circuit, attention)
+                    matches = [w for w in ["system", "architecture", "failure", "circuit", "attention", "benchmark", "resilience"] if w in c_text and w in p_title]
+                    if matches and not self.G.has_edge(public_node, slug) and not self.G.has_edge(slug, public_node):
+                        self.G.add_edge(
+                            public_node,
+                            slug,
+                            edge_type="related_to",
+                            reason=f"Shared conceptual foundation: {matches[0]}",
+                            confidence=0.85,
+                            plane="shared",
+                        )
 
     def load_from_items(self, items: list[Any]):
         """
-        Hydrate the graph directly from a collection of PublicItems or domain objects.
+        Hydrate the graph directly from a collection of PublicItems or domain objects,
+        preserving all active curriculum concept nodes and edges.
         """
         self.G.clear()
         for item in items:
-            self.G.add_node(item.id, title=item.title, item_type=getattr(item, "item_type", "riff"), plane="public")
+            self.G.add_node(
+                item.id,
+                title=item.title,
+                item_type=getattr(item, "item_type", "riff"),
+                node_type=getattr(item, "item_type", "riff"),
+                plane="public"
+            )
             for edge in getattr(item, "edges", []):
                 self.G.add_edge(
                     edge.source_id,
@@ -52,7 +140,122 @@ class NetworkScienceCache:
                     confidence=edge.confidence,
                     plane="public"
                 )
+        if not self._curriculum_cache:
+            try:
+                from app.core.db import init_sqlite_db
+                conn = init_sqlite_db()
+                self.load_curriculum_from_db(conn)
+                conn.close()
+            except Exception:
+                pass
+        self._reapply_curriculum()
         self.precompute_metrics()
+
+
+    def add_curriculum_module(self, module_id: str, module_title: str, concepts: list[Any]):
+        """
+        Adds concept nodes, prerequisite edges, and progression edges to the in-memory graph.
+        """
+        concept_slugs = []
+        for concept in concepts:
+            slug = getattr(concept, "slug", "") or (concept.get("slug", "") if isinstance(concept, dict) else "")
+            title = getattr(concept, "title", slug) or (concept.get("title", slug) if isinstance(concept, dict) else slug)
+            summary = getattr(concept, "summary", "") or (concept.get("summary", "") if isinstance(concept, dict) else "")
+            prerequisites = getattr(concept, "prerequisites", []) or (concept.get("prerequisites", []) if isinstance(concept, dict) else [])
+
+            concept_data = {
+                "slug": slug,
+                "title": title,
+                "module_id": module_id,
+                "module_title": module_title,
+                "summary": summary,
+                "prerequisites": list(prerequisites),
+            }
+            self._curriculum_cache[slug] = concept_data
+            concept_slugs.append(slug)
+
+            self.G.add_node(
+                slug,
+                title=title,
+                item_type="concept",
+                node_type="concept",
+                module_id=module_id,
+                module_title=module_title,
+                summary=summary,
+                plane="shared",
+            )
+
+            for prereq in prerequisites:
+                if prereq:
+                    self.G.add_edge(
+                        prereq,
+                        slug,
+                        edge_type="prerequisite_for",
+                        reason=f"Prerequisite for {title}",
+                        confidence=1.0,
+                        plane="shared",
+                    )
+
+        # Sequential links within the module
+        for i in range(len(concept_slugs) - 1):
+            u, v = concept_slugs[i], concept_slugs[i + 1]
+            if u and v and not self.G.has_edge(u, v):
+                self.G.add_edge(
+                    u,
+                    v,
+                    edge_type="develops_into",
+                    reason=f"Sequential progression in {module_title}",
+                    confidence=1.0,
+                    plane="shared",
+                )
+
+        self._curriculum_modules[module_id] = {
+            "module_id": module_id,
+            "title": module_title,
+            "concept_slugs": concept_slugs,
+        }
+
+        self._cached_snapshot = None
+        self.precompute_metrics()
+
+    def load_curriculum_from_db(self, conn: sqlite3.Connection):
+        """
+        Loads persisted curriculum concepts and milestones from SQLite into the in-memory cache.
+        """
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT slug, title, module_id, module_title, summary, prerequisites_json FROM curriculum_concepts")
+            for slug, title, module_id, module_title, summary, prereqs_json in cursor.fetchall():
+                try:
+                    prereqs = json.loads(prereqs_json)
+                except Exception:
+                    prereqs = []
+                self._curriculum_cache[slug] = {
+                    "slug": slug,
+                    "title": title,
+                    "module_id": module_id,
+                    "module_title": module_title,
+                    "summary": summary or "",
+                    "prerequisites": prereqs,
+                }
+
+            cursor.execute("SELECT module_id, title, concept_slugs_json FROM curriculum_milestones")
+            for mod_id, title, slugs_json in cursor.fetchall():
+                try:
+                    slugs = json.loads(slugs_json)
+                except Exception:
+                    slugs = []
+                self._curriculum_modules[mod_id] = {
+                    "module_id": mod_id,
+                    "title": title,
+                    "concept_slugs": slugs,
+                }
+
+            self._reapply_curriculum()
+            self.precompute_metrics()
+        except sqlite3.OperationalError:
+            # Tables may not be initialized yet
+            pass
 
     def incremental_add(self, source_id: str, target_id: str, attributes: dict):
         """

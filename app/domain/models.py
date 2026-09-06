@@ -100,6 +100,20 @@ class ConnectionProposal(BaseModel):
             raise ValueError("deferred proposals require a review window and due date")
         return self
 
+    @property
+    def title(self) -> str:
+        clean_concept = self.concept_id.replace("-", " ").title()
+        edge = self.edge_type.value.replace("_", " ").capitalize()
+        return f"{edge} → {clean_concept}"
+
+    @property
+    def body(self) -> str:
+        return self.rationale or self.excerpt
+
+    @property
+    def cluster(self) -> str:
+        return "Complex Systems"
+
 
 class CandidateConcept(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)

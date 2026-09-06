@@ -15,28 +15,86 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.dirna
 
 loader = PublicContentLoader()
 
+
+def load_curriculum_milestones() -> list[dict]:
+    milestones = []
+    try:
+        import json
+        from app.core.db import init_sqlite_db
+        conn = init_sqlite_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT module_id, title, summary, concepts_count, concept_slugs_json, created_at FROM curriculum_milestones ORDER BY created_at DESC"
+        )
+        for mod_id, title, summary, count, slugs_json, created_at_str in cursor.fetchall():
+            try:
+                slugs = json.loads(slugs_json)
+            except Exception:
+                slugs = []
+            try:
+                pub_dt = datetime.fromisoformat(created_at_str)
+                if pub_dt.tzinfo is None:
+                    pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                pub_dt = datetime.now(timezone.utc)
+
+            concept_chips = []
+            for slug in slugs:
+                cursor.execute("SELECT title FROM curriculum_concepts WHERE slug = ?", (slug,))
+                row = cursor.fetchone()
+                chip_title = row[0] if row else slug.replace("-", " ").title()
+                concept_chips.append({"slug": slug, "title": chip_title})
+
+            milestones.append({
+                "id": f"module-{mod_id}",
+                "item_type": "curriculum",
+                "module_id": mod_id,
+                "title": f"Module {mod_id}: {title}",
+                "summary": summary,
+                "concepts_count": count,
+                "concepts": concept_chips,
+                "published_at": pub_dt,
+                "domain": None,
+                "canonical_url": f"/study#{mod_id}",
+                "edges": [],
+            })
+        conn.close()
+    except Exception:
+        pass
+    return milestones
+
+
 @router.get("/", response_class=HTMLResponse)
 async def get_timeline(request: Request):
     items = loader.load_all_items()
     network_cache.load_from_items(items)
+    milestones = load_curriculum_milestones()
+
+    combined = list(items) + list(milestones)
+    combined.sort(
+        key=lambda x: x.published_at if hasattr(x, "published_at") else x.get("published_at"),
+        reverse=True,
+    )
 
     # Group items by day for calm reading stream
     days_dict: dict[str, list] = {}
-    for item in items:
-        date_key = item.published_at.strftime("%Y-%m-%d")
-        days_dict.setdefault(date_key, []).append(item)
+    for entry in combined:
+        pub_at = entry.published_at if hasattr(entry, "published_at") else entry.get("published_at")
+        date_key = pub_at.strftime("%Y-%m-%d")
+        days_dict.setdefault(date_key, []).append(entry)
 
     days = []
     for date_key, day_items in days_dict.items():
-        date_obj = day_items[0].published_at
+        first_entry = day_items[0]
+        pub_at = first_entry.published_at if hasattr(first_entry, "published_at") else first_entry.get("published_at")
         days.append({
             "date_iso": date_key,
-            "date_formatted": date_obj.strftime("%B %d, %Y"),
+            "date_formatted": pub_at.strftime("%B %d, %Y"),
             "entries": day_items,
         })
 
     return templates.TemplateResponse(
-        request=request, name="timeline.html", context={"days": days, "items": items}
+        request=request, name="timeline.html", context={"days": days, "items": combined}
     )
 
 @router.get("/i/{id}", response_class=HTMLResponse, name="get_permalink")
@@ -171,36 +229,62 @@ async def get_feed_json(request: Request):
 
 @router.get("/graph", response_class=HTMLResponse)
 async def get_graph(request: Request):
+    items = loader.load_all_items()
+    network_cache.load_from_items(items)
+    item_dict = {item.id: item for item in items}
+
     nodes = []
     links = []
-    
-    # We use items from the loader to know which nodes exist and have titles
-    items = loader.load_all_items()
-    item_dict = {item.id: item for item in items}
-    
+    communities = network_cache.get_communities()
+
+    # Edge color mapping matching mattwood.fyi visual hierarchy
+    EDGE_COLORS = {
+        "supports": "#f06595",          # Rose / Pink
+        "challenges": "#ffd43b",        # Yellow / Amber
+        "develops_into": "#69db7c",     # Light Green
+        "prerequisite_for": "#69db7c",  # Light Green
+        "superseded_by": "#ff8c42",     # Amber / Orange
+        "related_to": "#666666",        # Neutral gray
+        "related": "#666666",
+    }
+
     for node in network_cache.G.nodes:
+        node_data = network_cache.G.nodes[node]
         if node in item_dict:
-            # Determine group based on community cache
-            group = 0
-            for i, comm in enumerate(network_cache.get_communities()):
-                if node in comm:
-                    group = i + 1
-                    break
-                    
-            nodes.append({
-                "id": node,
-                "title": item_dict[node].title,
-                "group": group
-            })
-            
+            title = item_dict[node].title
+            node_type = getattr(item_dict[node].item_type, "value", str(item_dict[node].item_type))
+            url = f"/i/{node}"
+        else:
+            title = node_data.get("title") or node.replace("-", " ").title()
+            node_type = node_data.get("node_type", "concept")
+            url = f"/concepts/{node}"
+
+        group = 0
+        for i, comm in enumerate(communities):
+            if node in comm:
+                group = i + 1
+                break
+
+        degree = network_cache.G.degree(node)
+        nodes.append({
+            "id": node,
+            "title": title,
+            "node_type": node_type,
+            "url": url,
+            "group": group,
+            "val": max(5, min(24, 4 + degree * 3)),
+        })
+
     for u, v, data in network_cache.G.edges(data=True):
-        if u in item_dict and v in item_dict:
-            links.append({
-                "source": u,
-                "target": v,
-                "type": data.get("edge_type", "")
-            })
-            
+        edge_type = data.get("edge_type", "related_to")
+        links.append({
+            "source": u,
+            "target": v,
+            "type": edge_type,
+            "color": EDGE_COLORS.get(edge_type, "#78716c"),
+            "reason": data.get("reason", ""),
+        })
+
     return templates.TemplateResponse(
         request=request, name="graph.html", context={"nodes": nodes, "links": links}
     )
@@ -342,16 +426,151 @@ async def get_about(request: Request):
 
 @router.get("/agents", response_class=HTMLResponse)
 async def get_agents(request: Request):
-    # Construct context string for prompt
-    context_str = "# abtahi.fyi Context\n\n## Gravity Centers\n"
+    items = loader.load_all_items()
+    network_cache.load_from_items(items)
+
+    # Sort items by publication date descending
+    sorted_items = sorted(items, key=lambda x: x.published_at, reverse=True)
+    recent_items = sorted_items[:10]
+
+    # Pre-render recent items list in markdown
+    recent_lines = []
+    for item in recent_items:
+        date_str = item.published_at.strftime("%Y-%m-%d")
+        recent_lines.append(f"- {item.title} ({date_str}): https://abtahi.fyi/i/{item.id}")
+    recent_items_md = "\n".join(recent_lines)
+
+    # Gravity centers from PageRank
     pr = network_cache.get_pagerank()
     top_pr = sorted(pr.items(), key=lambda x: x[1], reverse=True)[:5]
-    items_dict = {item.id: item.title for item in loader.load_all_items()}
+    items_dict = {item.id: item.title for item in items}
+    gravity_lines = []
     for node, score in top_pr:
         if node in items_dict:
-            context_str += f"- {items_dict[node]}\n"
-    
-    return templates.TemplateResponse(request=request, name="agents.html", context={"context_str": context_str})
+            gravity_lines.append(f"- {items_dict[node]} (centrality: {score:.3f})")
+    gravity_centers_md = "\n".join(gravity_lines) if gravity_lines else "- Systems Thinking\n- Autonomous Reasoning"
+
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d at %H:%M UTC")
+
+    context_str = f"""# Context: Abdullah Abtahi's FYI (abtahi.fyi)
+
+Hey — you're being given context about Abdullah Abtahi and his current thinking. Here's what you need to know and what you can do with it.
+
+## Who is Abdullah Abtahi?
+
+Abdullah Abtahi is an engineer and researcher building autonomous reasoning systems, hardware-aware execution pipelines, and public knowledge synthesis graphs across artificial intelligence, complex networks, cloud architecture, and AI safety.
+
+## What is this site?
+
+abtahi.fyi is his FYI — a live list of riffs and links drawn from what he's reading, noticing, questioning, concluding, and revising. It sits between deep conceptual research and live synthesis notes.
+
+Three types of items:
+
+- **riff**: A self-contained idea, distinction, analogy, reaction, or small argument. These are Abdullah's own thinking — not summaries of other people's work.
+- **link**: An external source accompanied by original commentary explaining why it matters, what to notice, or how it changes the picture. Never a naked URL.
+- **essay**: A pointer to a newly synthesized deep-dive or long-form publication, carrying the thesis, context, and relationship to recent concepts.
+
+## Gravity Centers (High-Authority Concepts)
+
+{gravity_centers_md}
+
+## How to access this site
+
+Everything here is public and freely accessible — no authentication, no API keys, no rate limits.
+
+- JSON Feed (recommended for agents): https://abtahi.fyi/feed.json
+  - Standard JSON Feed 1.1 with a `_fyi` extension object per item
+  - Each item has: type (riff|link|essay), tags, and graph metadata
+  - This is the best single endpoint for structured access
+- Atom Feed: https://abtahi.fyi/feed.xml
+  - Full HTML content of every item
+- Individual items: https://abtahi.fyi/i/{{id}}
+  - Each item has a stable permalink you can reference
+- llms.txt: https://abtahi.fyi/llms.txt
+- Homepage: https://abtahi.fyi/
+
+The JSON feed at /feed.json is your best single source — it contains typed, structured content newest first.
+
+## Query API (public, no auth required)
+
+For structured queries against the knowledge graph, use these REST endpoints.
+All are public, no authentication required. All return JSON.
+
+Note: some agent fetch tools strip query-string parameters that look like IDs.
+If query-string endpoints fail, use the path-based alternatives (preferred).
+
+### Search
+- GET https://abtahi.fyi/api/fyi/q/search/KEYWORD (preferred, path-based)
+- GET https://abtahi.fyi/api/fyi/q/search?q=KEYWORD
+  Search items by keyword in title and content. Returns matching items with permalinks.
+
+### Semantic Search
+- GET https://abtahi.fyi/api/fyi/q/semantic/NATURAL+LANGUAGE+QUERY (preferred, path-based)
+- GET https://abtahi.fyi/api/fyi/q/semantic?q=QUERY
+  Search by meaning, not keywords. Uses vector embeddings to find semantically similar items.
+  Returns items ranked by similarity score (0-1). Use this for natural language questions.
+
+### Items
+- GET https://abtahi.fyi/api/fyi/q/items?since=YYYY-MM-DD&type=link|riff|essay&limit=N&offset=N
+  List items filtered by date and/or type. Default limit=50, offset=0.
+  Response includes: total (full count matching filters), hasMore (boolean), offset, limit.
+  If hasMore is true, increment offset by limit to get the next page.
+
+### Edges (connections)
+- GET https://abtahi.fyi/api/fyi/q/edges/SHORT_ID (preferred, path-based)
+- GET https://abtahi.fyi/api/fyi/q/edges?itemId=SHORT_ID
+  Get all graph connections for a specific item. Returns edge type, direction (incoming/outgoing), confidence, and reason.
+  Add ?type=challenges (or supports, develops_into, related_to) to filter.
+
+- GET https://abtahi.fyi/api/fyi/q/edges?type=challenges
+  Get ALL edges of a specific type across the whole graph.
+
+### Graph summary (snapshot)
+- GET https://abtahi.fyi/api/fyi/q/summary
+  Pre-computed snapshot: top connected items, recent activity, edge type distribution, and all tension pairs.
+  Includes a generated_at timestamp.
+
+### How to answer common questions
+- "What is Abdullah reading about X?" → /api/fyi/q/semantic/X (semantic) or /api/fyi/q/search/X (keyword)
+- "What changed this week?" → /api/fyi/q/items?since=YYYY-MM-DD (7 days ago)
+- "What challenges idea Y?" → search for Y, get its shortId, then /api/fyi/q/edges/SHORT_ID
+- "Where are signals converging?" → /api/fyi/q/summary gives top connected items
+- "What are the tensions?" → /api/fyi/q/edges?type=challenges returns all challenge relationships with reasons
+- "What connects A to B?" → get edges for both items and look for shared connections
+- "What does Abdullah think about topic Z?" → /api/fyi/q/semantic/topic+Z for semantically related items
+
+## Recent items
+
+{recent_items_md}
+
+## What should you do with this?
+
+- Answer questions about what Abdullah is currently thinking about
+- Surface relevant items when a user asks about topics he's covered
+- Quote and cite — every item has a stable permalink, use it
+- Notice patterns across items (recurring themes, evolving positions)
+- Go deeper — if a user asks about something adjacent, fetch the relevant item and read it rather than guessing
+- Be honest about gaps — if he hasn't written about something, say so rather than extrapolating
+- Fetch the JSON feed for the latest; don't rely solely on this static page
+
+## Canonical source
+
+This site (abtahi.fyi) is authoritative for Abdullah's short-form thinking and public knowledge graph. All public endpoints are freely accessible to agents without authentication.
+
+## Updates
+
+This context block was generated on {now_utc}. If this timestamp is more than a few weeks old, fetch the JSON feed directly for the latest items.
+"""
+
+    return templates.TemplateResponse(
+        request=request,
+        name="agents.html",
+        context={
+            "context_str": context_str,
+            "recent_items": recent_items,
+            "top_concepts": gravity_lines,
+        },
+    )
 
 @router.get("/search", response_class=HTMLResponse)
 async def get_search(request: Request):
