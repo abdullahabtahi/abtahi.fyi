@@ -6,29 +6,17 @@
 {% block content %}
 <div id="sources-archive" class="max-w-4xl mx-auto px-6 py-10">
 
-  <!-- Header with Actions -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-10 border-b border-stone-200 dark:border-stone-800 gap-4">
-    <div>
-      <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
-        Source Archive
-      </h1>
-      <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
-        Immutable repository of your ingested lecture materials, transcripts, and study reflections.
-      </p>
-    </div>
+  {% set active_tab = 'sources' %}
+  {% include "_study_nav.html" %}
 
-    <div class="flex items-center gap-2.5 shrink-0">
-      <a href="/study"
-         class="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        Study Map
-      </a>
-      <a href="/study/ingest"
-         class="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline shadow-xs">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Ingest Notes
-      </a>
-    </div>
+  <!-- Header with Actions -->
+  <div class="pb-6 mb-8 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+      Source Archive
+    </h1>
+    <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
+      Immutable repository of your ingested lecture materials, transcripts, and study reflections.
+    </p>
   </div>
 
   <!-- Ingested Sources List -->

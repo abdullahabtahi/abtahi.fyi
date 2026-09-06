@@ -4,31 +4,19 @@
 {% block meta_description %}Evidence-backed study proposals connecting current sources to WorldQuant University Module 1 concepts.{% endblock %}
 
 {% block content %}
-<div class="py-12 max-w-4xl mx-auto px-6">
+<div class="py-10 max-w-4xl mx-auto px-6">
 
-  <!-- Header with Navigation Actions -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-10 border-b border-stone-200 dark:border-stone-800 gap-4">
-    <div>
-      <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
-        Today queue
-      </h1>
-      <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
-        Up to three evidence-backed proposals for today's study session.
-      </p>
-    </div>
+  {% set active_tab = 'today' %}
+  {% include "_study_nav.html" %}
 
-    <div class="flex items-center gap-2.5 shrink-0">
-      <a href="/study"
-         class="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        Study Map
-      </a>
-      <a href="/study/ingest"
-         class="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline shadow-xs">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Ingest Notes
-      </a>
-    </div>
+  <!-- Header with Description -->
+  <div class="pb-6 mb-8 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+      Today queue
+    </h1>
+    <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
+      Up to three evidence-backed proposals for today's study session.
+    </p>
   </div>
 
   <div id="today-queue">
@@ -85,31 +73,33 @@
         </article>
         {% endfor %}
       {% else %}
-      <!-- Actionable Empty State -->
-      <div class="border border-dashed border-stone-300 dark:border-stone-800 rounded-xl p-10 text-center bg-stone-50/50 dark:bg-stone-950/30">
-        <div class="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center mx-auto mb-4 text-stone-500 dark:text-stone-400">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <!-- Actionable Defensively Constrained Empty State -->
+      <div class="max-w-md mx-auto my-8 border border-stone-200 dark:border-stone-800 rounded-2xl p-8 text-center bg-stone-50/50 dark:bg-stone-900/40 shadow-xs">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" style="width:48px;height:48px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
-        <h2 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+        <h2 class="text-xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
           No proposals queued for today
         </h2>
-        <p class="text-xs text-stone-500 dark:text-stone-400 max-w-md mx-auto mb-6 leading-relaxed">
-          Your review queue is clear. You can explore your structured curriculum map, ingest fresh course lecture notes, or inspect existing sources.
+        <p class="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+          Your review queue is clear. Explore your structured curriculum map, ingest fresh course lecture notes, or inspect existing sources.
         </p>
-        <div class="flex flex-wrap items-center justify-center gap-3">
+        <div class="flex flex-wrap items-center justify-center gap-2.5">
           <a href="/study"
-             class="px-4 py-2 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline shadow-xs flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-            Curriculum Study Map
+             class="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono rounded-lg transition-colors no-underline shadow-xs flex items-center gap-1.5">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            Study Map
           </a>
           <a href="/study/ingest"
-             class="px-4 py-2 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Ingest Course Notes
+             class="px-3.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono rounded-lg transition-colors no-underline flex items-center gap-1.5">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Ingest Notes
           </a>
           <a href="/sources"
-             class="px-4 py-2 bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline">
-            Sources Archive &rarr;
+             class="px-3.5 py-1.5 bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 text-xs font-mono rounded-lg transition-colors no-underline">
+            Sources &rarr;
           </a>
         </div>
       </div>

@@ -4,13 +4,11 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-6 py-10">
-    <div class="mb-8">
-        <nav class="flex items-center gap-2 text-xs font-mono text-stone-500 mb-3">
-            <a href="/study" class="hover:underline text-stone-600 dark:text-stone-400">Study Map</a>
-            <span>/</span>
-            <span class="text-stone-900 dark:text-stone-200">Ingest Curriculum</span>
-        </nav>
-        <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2">
+    {% set active_tab = 'ingest' %}
+    {% include "_study_nav.html" %}
+
+    <div class="pb-6 mb-8 border-b border-stone-200 dark:border-stone-800">
+        <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
             Ingest Course Material
         </h1>
         <p class="text-stone-600 dark:text-stone-400 text-sm leading-relaxed max-w-2xl">
