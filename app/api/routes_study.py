@@ -32,7 +32,7 @@ def get_interaction_store():
 @study_router.get("/today", response_class=HTMLResponse)
 async def today_view(request: Request, identity: Identity = Depends(require_identity), store = Depends(get_interaction_store)):
     return templates.TemplateResponse(
-        request=request, name="today.html", context={}
+        request=request, name="today.html", context={"proposals": []}
     )
 
 @study_router.get("/study", response_class=HTMLResponse)
@@ -82,12 +82,13 @@ async def concept_view(slug: str, request: Request, identity: Identity = Depends
     from app.core.markdown_parser import parse_concept_markdown
     mock_markdown = f"---\ntitle: {slug}\nmodule: M1L1\n---\nThis is a synthesized concept page for {slug}."
     concept = parse_concept_markdown(mock_markdown, slug)
-    html = f"<html><body>{nav_html}<h1>{concept.title}</h1><p>{concept.synthesis}</p></body></html>"
-    return html
+    return templates.TemplateResponse(
+        request=request, name="concept.html", context={"concept": concept}
+    )
 
 @study_router.get("/sources", response_class=HTMLResponse)
 async def sources_view(request: Request, identity: Identity = Depends(require_identity)):
-    return f'<html><body>{nav_html}<div id="sources-archive">Source Archive</div></body></html>'
+    return templates.TemplateResponse(request=request, name="sources.html", context={})
 
 @study_router.post("/api/reflections", response_class=HTMLResponse)
 async def submit_reflection(request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf), store = Depends(get_interaction_store)):

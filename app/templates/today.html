@@ -8,7 +8,7 @@
 
   <div class="mb-10 pb-8 border-b border-stone-200">
     <h1 class="text-2xl font-['Bellefair'] text-stone-900 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
-      Daily Signal Review
+      Today queue
     </h1>
     <p class="text-sm font-mono text-stone-400">
       Up to three evidence-backed proposals for today's study session.
@@ -35,26 +35,9 @@
 
           <p class="text-sm text-stone-600 leading-relaxed mb-6">{{ proposal.body }}</p>
 
-          <div class="flex items-center gap-3 pt-4 border-t border-stone-100">
-            <button class="px-4 py-2 text-xs font-mono bg-stone-900 text-white rounded-lg hover:bg-stone-700 transition-colors"
-                    hx-post="/api/v1/study/connect/{{ proposal.id }}"
-                    hx-target="#proposal-{{ proposal.id }}"
-                    hx-swap="outerHTML">
-              Connect
-            </button>
-            <button class="px-4 py-2 text-xs font-mono border border-stone-200 text-stone-600 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-colors"
-                    hx-post="/api/v1/study/defer/{{ proposal.id }}"
-                    hx-target="#proposal-{{ proposal.id }}"
-                    hx-swap="outerHTML">
-              Defer
-            </button>
-            <button class="px-4 py-2 text-xs font-mono text-stone-400 hover:text-stone-600 transition-colors ml-auto"
-                    hx-post="/api/v1/study/dismiss/{{ proposal.id }}"
-                    hx-target="#proposal-{{ proposal.id }}"
-                    hx-swap="outerHTML">
-              Dismiss
-            </button>
-          </div>
+          <p class="pt-4 border-t border-stone-100 text-xs font-mono text-stone-400">
+            Review actions are unavailable until durable study storage is configured.
+          </p>
         </article>
         {% endfor %}
       {% else %}

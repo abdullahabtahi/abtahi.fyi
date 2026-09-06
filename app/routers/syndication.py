@@ -231,10 +231,6 @@ async def get_search(request: Request):
 
 @router.get("/api/semantic")
 async def api_semantic(query: str, request: Request):
-    # This is a stub for the semantic search returning HTMX snippets
-    # A real implementation would call google.genai to embed the query,
-    # then query sqlite-vec using `embedding MATCH :query_vector AND k = 5`
-    
-    html_results = f'<div class="p-4 border border-stone-800 bg-stone-900"><h4 class="text-stone-200">Semantic Search Mock Result</h4><p class="text-sm text-stone-400">Query: "{query}"</p><p class="text-sm text-stone-500 mt-2">To perform real semantic search, the query must be embedded using the Gemini API first.</p></div>'
-    
-    return HTMLResponse(content=html_results)
+    return templates.TemplateResponse(
+        request=request, name="_semantic_results.html", context={"query": query}
+    )
