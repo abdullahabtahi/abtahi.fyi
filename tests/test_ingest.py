@@ -150,6 +150,24 @@ async def test_poll_feed_rejects_redirect_to_non_public_url():
     assert content is None
     assert status == 403
 
+
+@pytest.mark.asyncio
+async def test_poll_feed_rejects_response_larger_than_five_megabytes():
+    feed = FeedSource(id="1", url="https://example.com/feed.xml")
+    oversized_body = b"x" * (5 * 1024 * 1024 + 1)
+
+    with patch("httpx.AsyncClient.get") as mock_get:
+        mock_get.return_value = Response(
+            200,
+            content=oversized_body,
+            request=httpx.Request("GET", feed.url),
+        )
+
+        content, status, _, _ = await poll_feed(feed)
+
+    assert content is None
+    assert status == 413
+
 @pytest.mark.asyncio
 async def test_poll_feed_conditional_get():
     feed = FeedSource(id="1", url="https://example.com/feed.xml", last_fetched_at=None, etag='"12345"', last_modified=None)

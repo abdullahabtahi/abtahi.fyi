@@ -6,6 +6,7 @@ TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "ref", "fbclid", "gclid", "mc_cid", "mc_eid", "source"
 }
+MAX_FEED_BYTES = 5 * 1024 * 1024
 
 def canonicalize_url(url: str) -> str:
     """Normalizes URL for deterministic deduplication."""
@@ -105,6 +106,12 @@ async def poll_feed(feed: FeedSource) -> Tuple[Optional[str], int, Optional[str]
                         return None, 304, None, None
 
                     response.raise_for_status()
+
+                    content_length = response.headers.get("Content-Length")
+                    if content_length is not None and int(content_length) > MAX_FEED_BYTES:
+                        return None, 413, None, None
+                    if len(response.content) > MAX_FEED_BYTES:
+                        return None, 413, None, None
 
                     new_etag = response.headers.get("ETag")
                     new_lm = response.headers.get("Last-Modified")
