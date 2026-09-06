@@ -11,5 +11,8 @@ class FirebaseTokenVerifier:
     def create_session_cookie(self, id_token: str, expires_in: timedelta) -> str:
         return auth.create_session_cookie(id_token, expires_in=expires_in)
 
+    def verify_id_token(self, id_token: str) -> Dict[str, Any]:
+        return auth.verify_id_token(id_token)
+
     def verify_session_cookie(self, cookie: str, check_revoked: bool) -> Dict[str, Any]:
         return auth.verify_session_cookie(cookie, check_revoked=check_revoked)

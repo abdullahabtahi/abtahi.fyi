@@ -15,6 +15,11 @@ class FakeTokenVerifier:
         self.created_cookies.append(cookie)
         return cookie
 
+    def verify_id_token(self, id_token: str) -> dict:
+        if self.should_fail_verify:
+            raise ValueError("Invalid token")
+        return self.claims
+
     def verify_session_cookie(self, cookie: str, check_revoked: bool) -> dict:
         if self.should_fail_verify:
             raise ValueError("Invalid cookie")

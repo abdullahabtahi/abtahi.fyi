@@ -31,18 +31,21 @@ def test_mutation_rejected_without_csrf_token():
     assert response.json()["detail"] == "missing CSRF token"
 
 def test_mutation_rejected_with_invalid_csrf_token():
+    client.cookies.set("csrf_nonce", "session-one")
     response = client.post("/api/mutate", headers={"X-CSRF-Token": "invalid_token"})
     assert response.status_code == 403
     assert response.json()["detail"] == "invalid CSRF token"
 
 def test_mutation_succeeds_with_valid_csrf_token():
-    valid_token = generate_csrf_token("owner", "test_secret")
+    client.cookies.set("csrf_nonce", "session-one")
+    valid_token = generate_csrf_token("owner", "session-one", "test_secret")
     response = client.post("/api/mutate", headers={"X-CSRF-Token": valid_token})
     assert response.status_code == 200
     assert response.json()["status"] == "mutated"
 
 def test_csrf_token_is_session_bound():
-    valid_token_for_other = generate_csrf_token("other_user", "test_secret")
+    client.cookies.set("csrf_nonce", "session-one")
+    valid_token_for_other = generate_csrf_token("owner", "session-two", "test_secret")
     response = client.post("/api/mutate", headers={"X-CSRF-Token": valid_token_for_other})
     assert response.status_code == 403
     assert response.json()["detail"] == "invalid CSRF token"

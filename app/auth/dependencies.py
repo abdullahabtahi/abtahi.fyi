@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import RedirectResponse
 from datetime import timedelta
+from secrets import token_urlsafe
 from pydantic import BaseModel
 
 from app.ports.auth import TokenVerifier
-from app.auth.service import verify_allowlisted_identity
+from app.auth.service import identity_from_claims, verify_allowlisted_identity
+from app.adapters.firebase_auth import FirebaseTokenVerifier
 from app.domain.models import Identity, ForbiddenError
 
 auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -13,12 +15,7 @@ auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 # For now, we will define stub dependencies that should be overridden.
 
 def get_token_verifier() -> TokenVerifier:
-    class MockVerifier(TokenVerifier):
-        def verify_session_cookie(self, session_cookie: str) -> dict:
-            return {"uid": "mock-uid", "email": "abdullahabtahi21@gmail.com"}
-        def create_session_cookie(self, id_token: str, expires_in: timedelta) -> str:
-            return "mock-session"
-    return MockVerifier()
+    return FirebaseTokenVerifier()
 
 def get_allowed_email() -> str:
     from app.settings import Settings
@@ -27,9 +24,6 @@ def get_allowed_email() -> str:
 def require_identity(request: Request, verifier: TokenVerifier = Depends(get_token_verifier), allowed_email: str = Depends(get_allowed_email)) -> Identity:
     session_cookie = request.cookies.get("session")
     if not session_cookie:
-        from app.settings import Settings
-        if Settings().ENV == "development":
-            return Identity(uid="mock-uid", email=allowed_email)
         raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/sign-in"})
 
     try:
@@ -51,11 +45,14 @@ def require_csrf(
     secret: str = Depends(get_csrf_secret)
 ) -> bool:
     token = request.headers.get("X-CSRF-Token")
+    session_nonce = request.cookies.get("csrf_nonce")
     if not token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="missing CSRF token")
+    if not session_nonce:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="missing CSRF session")
     
     from app.web.csrf import validate_csrf_token
-    if not validate_csrf_token(token, identity.uid, secret):
+    if not validate_csrf_token(token, identity.uid, session_nonce, secret):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="invalid CSRF token")
     
     return True
@@ -70,9 +67,12 @@ def create_session(
     verifier: TokenVerifier = Depends(get_token_verifier)
 ):
     try:
+        identity = identity_from_claims(
+            verifier.verify_id_token(payload.idToken), get_allowed_email()
+        )
         expires_in = timedelta(days=14)
         cookie = verifier.create_session_cookie(payload.idToken, expires_in=expires_in)
-    except Exception:
+    except (ForbiddenError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication failed")
 
     response.set_cookie(
@@ -84,4 +84,22 @@ def create_session(
         max_age=int(expires_in.total_seconds()),
         path="/"
     )
-    return {"status": "ok"}
+    csrf_nonce = token_urlsafe(32)
+    response.set_cookie(
+        key="csrf_nonce",
+        value=csrf_nonce,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=int(expires_in.total_seconds()),
+        path="/",
+    )
+    from app.web.csrf import generate_csrf_token
+    return {
+        "status": "ok",
+        "csrfToken": generate_csrf_token(
+            identity.uid,
+            csrf_nonce,
+            get_csrf_secret(),
+        ),
+    }

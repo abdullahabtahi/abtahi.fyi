@@ -46,10 +46,27 @@ def test_rejects_missing_session_cookie(client):
     assert response.headers["Location"] == "/sign-in"
 
 def test_session_exchange_sets_httponly_cookie(client, fake_verifier):
+    fake_verifier.claims = {"uid": "owner", "email": "owner@example.com", "email_verified": True}
     response = client.post("/api/auth/session", json={"idToken": "fake_token"})
     assert response.status_code == 200
     assert "session=fake_cookie_for_fake_token" in response.headers["set-cookie"]
     assert "HttpOnly" in response.headers["set-cookie"]
+
+
+@pytest.mark.parametrize(
+    "claims",
+    [
+        {"uid": "owner", "email": "owner@example.com", "email_verified": False},
+        {"uid": "other", "email": "other@example.com", "email_verified": True},
+    ],
+)
+def test_session_exchange_rejects_invalid_identity_claims(client, fake_verifier, claims):
+    fake_verifier.claims = claims
+
+    response = client.post("/api/auth/session", json={"idToken": "fake_token"})
+
+    assert response.status_code == 401
+    assert "set-cookie" not in response.headers
 
 def test_session_exchange_rejects_missing_token(client):
     response = client.post("/api/auth/session", json={})
