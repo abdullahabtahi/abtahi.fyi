@@ -1,0 +1,4 @@
+## 2025-03-08 - [Missing Authentication on Admin Endpoints]
+**Vulnerability:** The admin endpoints in `app/routers/admin.py` (`/capture`, `/api/poll-feeds`, `/api/consolidate`) lacked proper authentication checks. They either had no dependencies at all or relied on a weak, custom `verify_csrf` function that only verified cookie-header parity, without actually validating user identity.
+**Learning:** In a fast API app, relying on a custom CSRF check instead of the standard `require_identity` dependency can result in completely unauthenticated access to administrative actions. The `verify_csrf` did not check if the user was logged in.
+**Prevention:** Always reuse standard security dependencies (like `require_identity` and `require_csrf`) across all sensitive routes. Avoid custom security check implementations on a per-router basis unless absolutely necessary and thoroughly reviewed.
