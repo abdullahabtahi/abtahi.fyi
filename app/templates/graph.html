@@ -159,6 +159,7 @@
     <svg id="graph"></svg>
     <div id="tooltip"></div>
     <div id="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#38bdf8"></div> example of</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#f06595"></div> supports</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#ffd43b"></div> challenges</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#69db7c"></div> develops into</div>
@@ -212,6 +213,8 @@
         };
 
         const edgeColors = {
+            "example_of": "#38bdf8",
+            "application_of": "#a78bfa",
             "supports": "#f06595",
             "challenges": "#ffd43b",
             "develops_into": "#69db7c",
@@ -220,6 +223,14 @@
             "related": "#666",
             "superseded_by": "#ff8c42",
             "corrected_by": "#da77f2"
+        };
+
+        const getNodeColor = (d) => {
+            if (d.node_type === "signal") return "#38bdf8";      // Sky
+            if (d.node_type === "concept") return "#10b981";     // Emerald
+            if (d.node_type === "link") return "#0ea5e9";        // Ocean
+            if (d.node_type === "essay") return "#a855f7";       // Purple
+            return "#f06595";                                   // Default Rose
         };
 
         const width = window.innerWidth;
@@ -243,8 +254,8 @@
             .attr("stroke-width", d => (d.type === "related_to" || d.type === "related") ? 1 : 2);
 
         const node = g.append("g").selectAll("circle").data(data.nodes).join("circle")
-            .attr("r", 6)
-            .attr("fill", "#f06595")
+            .attr("r", d => d.node_type === "signal" ? 7 : 6)
+            .attr("fill", d => getNodeColor(d))
             .attr("stroke", "#2a2a2a")
             .attr("stroke-width", 1.5)
             .style("cursor", "pointer")
@@ -319,8 +330,8 @@
             const x = Math.min(window.innerWidth - tipWidth - 20, Math.max(20, event.pageX + 15));
             const y = Math.min(window.innerHeight - 220, Math.max(70, event.pageY - 10));
             tooltip.html(tt).style("left", x + "px").style("top", y + "px").style("opacity", 1);
-        }).on("mouseout", function() {
-            d3.select(this).attr("r", 6).attr("fill", "#f06595");
+        }).on("mouseout", function(event, d) {
+            d3.select(this).attr("r", d.node_type === "signal" ? 7 : 6).attr("fill", getNodeColor(d));
             link.attr("stroke-opacity", d => (d.type === "related_to" || d.type === "related") ? 0.3 : 0.6)
                 .attr("stroke-width", d => (d.type === "related_to" || d.type === "related") ? 1 : 2);
             node.style("opacity", 1);
@@ -328,7 +339,11 @@
             tooltip.style("opacity", 0);
         }).on("click", (e, d) => {
             if (d.url) {
-                window.location.href = d.url;
+                if (d.url.startsWith("http://") || d.url.startsWith("https://")) {
+                    window.open(d.url, "_blank", "noopener,noreferrer");
+                } else {
+                    window.location.href = d.url;
+                }
             } else if (d.node_type === 'concept') {
                 window.location.href = `/concepts/${d.id}`;
             } else {

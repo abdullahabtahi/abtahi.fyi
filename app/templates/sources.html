@@ -95,8 +95,7 @@
     <form hx-post="/api/reflections"
           hx-target="#reflection-result"
           class="space-y-4"
-          data-csrf-token="{{ csrf_token }}"
-          hx-headers='js:{"Idempotency-Key": this.dataset.idempotencyKey || (this.dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.dataset.csrfToken}'>
+          hx-headers='js:{"Idempotency-Key": crypto.randomUUID(), "X-CSRF-Token": "{{ csrf_token }}"}'>
       <textarea name="reflection_text"
                 rows="4"
                 class="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 p-3 text-sm font-sans placeholder-stone-400 focus:outline-none focus:border-stone-500 leading-relaxed"

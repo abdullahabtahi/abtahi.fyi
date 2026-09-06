@@ -62,12 +62,13 @@
               {% for command, label in [("connect", "Connect"), ("edit", "Save edit"), ("dismiss", "Dismiss")] %}
               <button
                 type="button"
-                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer disabled:opacity-50"
                 hx-post="/api/proposals/{{ proposal.id }}/{{ command }}"
                 hx-include="#reviewed-content-{{ proposal.id }}"
                 hx-target="#proposal-{{ proposal.id }}"
                 hx-swap="outerHTML"
-                hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
+                hx-disabled-elt="this"
+                hx-headers='js:{"Idempotency-Key": crypto.randomUUID(), "X-CSRF-Token": "{{ csrf_token }}"}'
               >{{ label }}</button>
               {% endfor %}
               <select id="defer-window-{{ proposal.id }}" name="defer_window" class="rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 px-2 py-1.5 text-xs font-mono focus:outline-none">
@@ -77,12 +78,13 @@
               </select>
               <button
                 type="button"
-                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer disabled:opacity-50"
                 hx-post="/api/proposals/{{ proposal.id }}/defer"
                 hx-include="#defer-window-{{ proposal.id }}"
                 hx-target="#proposal-{{ proposal.id }}"
                 hx-swap="outerHTML"
-                hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
+                hx-disabled-elt="this"
+                hx-headers='js:{"Idempotency-Key": crypto.randomUUID(), "X-CSRF-Token": "{{ csrf_token }}"}'
               >Defer</button>
             </div>
           </div>

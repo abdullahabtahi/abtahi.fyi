@@ -89,14 +89,22 @@ def _idempotency_key(request: Request) -> str:
     return key
 
 
-async def _private_csrf_token(request: Request, identity: Identity) -> str:
+async def _ensure_private_csrf(request: Request, identity: Identity) -> tuple[str, str | None]:
     nonce = request.cookies.get("csrf_nonce")
+    new_nonce = None
     if not nonce:
-        return ""
+        from secrets import token_urlsafe
+        nonce = token_urlsafe(32)
+        new_nonce = nonce
     from app.auth.dependencies import get_csrf_secret
     from app.web.csrf import generate_csrf_token
 
-    return generate_csrf_token(identity.uid, nonce, get_csrf_secret())
+    return generate_csrf_token(identity.uid, nonce, get_csrf_secret()), new_nonce
+
+
+async def _private_csrf_token(request: Request, identity: Identity) -> str:
+    token, _ = await _ensure_private_csrf(request, identity)
+    return token
 
 
 @study_router.get("/today", response_class=HTMLResponse)
@@ -112,15 +120,26 @@ async def today_view(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="review storage is unavailable",
         ) from error
-    return templates.TemplateResponse(
+    csrf_token, new_nonce = await _ensure_private_csrf(request, identity)
+    response = templates.TemplateResponse(
         request=request,
         name="today.html",
         context={
             "identity": identity,
             "proposals": proposals,
-            "csrf_token": await _private_csrf_token(request, identity),
+            "csrf_token": csrf_token,
         },
     )
+    if new_nonce:
+        response.set_cookie(
+            key="csrf_nonce",
+            value=new_nonce,
+            httponly=True,
+            secure=request.url.scheme == "https",
+            samesite="lax",
+            path="/",
+        )
+    return response
 
 
 @study_router.get("/study", response_class=HTMLResponse)
@@ -564,6 +583,26 @@ async def concept_view(
             (slug,),
         )
         row = cursor.fetchone()
+        cursor.execute(
+            """
+            SELECT id, source_url, source_title, source_domain, edge_type, excerpt, reviewed_citation, rationale, connected_at
+            FROM connected_signals WHERE concept_slug = ? ORDER BY connected_at DESC
+            """,
+            (slug,),
+        )
+        signals = []
+        for s_row in cursor.fetchall():
+            signals.append({
+                "id": s_row[0],
+                "source_url": s_row[1],
+                "source_title": s_row[2],
+                "source_domain": s_row[3],
+                "edge_type": s_row[4],
+                "excerpt": s_row[5],
+                "reviewed_citation": s_row[6],
+                "rationale": s_row[7],
+                "connected_at": s_row[8],
+            })
         conn.close()
         if row:
             concept = ConceptNode(
@@ -578,7 +617,7 @@ async def concept_view(
                 keywords=json.loads(row[8]) if row[8] else [],
             )
     except Exception:
-        pass
+        signals = []
 
     # 2. Authenticated fallback to Firestore
     if not concept and identity:
@@ -600,7 +639,7 @@ async def concept_view(
     return templates.TemplateResponse(
         request=request,
         name="concept.html",
-        context={"identity": identity, "concept": concept},
+        context={"identity": identity, "concept": concept, "signals": signals},
     )
 
 

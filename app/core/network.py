@@ -27,6 +27,7 @@ class NetworkScienceCache:
         self._cached_snapshot: Optional[GraphSnapshot] = None
         self._curriculum_cache: dict[str, dict] = {}       # slug -> concept dict
         self._curriculum_modules: dict[str, dict] = {}     # module_id -> module dict
+        self._connected_signals: dict[str, dict] = {}      # signal_id -> signal dict
 
     def initialize(self, edges: list[tuple[str, str, dict]]):
         """
@@ -37,7 +38,33 @@ class NetworkScienceCache:
         for u, v, attrs in edges:
             self.G.add_edge(u, v, **attrs)
         self._reapply_curriculum()
+        self._reapply_signals()
         self.precompute_metrics()
+
+    def _reapply_signals(self):
+        """Re-applies all cached connected signals from Today review queue."""
+        for sig_id, sig in self._connected_signals.items():
+            node_id = f"signal-{sig.get('id', sig_id)}"
+            self.G.add_node(
+                node_id,
+                title=sig.get("source_title") or sig.get("title", "Signal"),
+                item_type="signal",
+                node_type="signal",
+                url=sig.get("source_url", ""),
+                source_domain=sig.get("source_domain", ""),
+                plane="shared",
+            )
+            concept_slug = sig.get("concept_slug")
+            if concept_slug:
+                edge_type = sig.get("edge_type", "example_of")
+                self.G.add_edge(
+                    node_id,
+                    concept_slug,
+                    edge_type=edge_type,
+                    reason=sig.get("reviewed_citation") or f"{edge_type.replace('_', ' ').capitalize()} for {sig.get('concept_title', concept_slug)}",
+                    confidence=1.0,
+                    plane="shared",
+                )
 
     def _reapply_curriculum(self):
         """Re-applies all cached curriculum concept nodes and edges with rich inter-connections."""
@@ -140,15 +167,17 @@ class NetworkScienceCache:
                     confidence=edge.confidence,
                     plane="public"
                 )
-        if not self._curriculum_cache:
+        if not self._curriculum_cache or not self._connected_signals:
             try:
                 from app.core.db import init_sqlite_db
                 conn = init_sqlite_db()
                 self.load_curriculum_from_db(conn)
+                self.load_connected_signals_from_db(conn)
                 conn.close()
             except Exception:
                 pass
         self._reapply_curriculum()
+        self._reapply_signals()
         self.precompute_metrics()
 
 
@@ -256,6 +285,64 @@ class NetworkScienceCache:
         except sqlite3.OperationalError:
             # Tables may not be initialized yet
             pass
+
+    def load_connected_signals_from_db(self, conn: sqlite3.Connection):
+        """
+        Loads persisted connected signals from SQLite into the in-memory cache.
+        """
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT id, proposal_id, source_url, source_title, source_domain,
+                       concept_slug, concept_title, edge_type, excerpt,
+                       reviewed_citation, rationale, connected_at
+                FROM connected_signals
+                """
+            )
+            for row in cursor.fetchall():
+                sig = {
+                    "id": row[0],
+                    "proposal_id": row[1],
+                    "source_url": row[2] or "",
+                    "source_title": row[3] or "Signal",
+                    "source_domain": row[4] or "",
+                    "concept_slug": row[5],
+                    "concept_title": row[6] or row[5],
+                    "edge_type": row[7] or "example_of",
+                    "excerpt": row[8] or "",
+                    "reviewed_citation": row[9] or "",
+                    "rationale": row[10] or "",
+                    "connected_at": row[11] or "",
+                }
+                self._connected_signals[row[0]] = sig
+            self._reapply_signals()
+            self.precompute_metrics()
+        except sqlite3.OperationalError:
+            pass
+
+    def add_connected_signal(self, sig: dict):
+        """
+        Dynamically add an approved signal into the in-memory graph and update metrics.
+        """
+        sig_id = str(sig.get("id") or sig.get("proposal_id") or "")
+        if sig_id:
+            self._connected_signals[sig_id] = sig
+            self._reapply_signals()
+            self._cached_snapshot = None
+            self.precompute_metrics()
+
+    def add_connected_signals(self, signals: list[dict]):
+        """
+        Dynamically add multiple signals into the in-memory graph.
+        """
+        for sig in signals:
+            sig_id = str(sig.get("id") or sig.get("proposal_id") or "")
+            if sig_id:
+                self._connected_signals[sig_id] = sig
+        self._reapply_signals()
+        self._cached_snapshot = None
+        self.precompute_metrics()
 
     def incremental_add(self, source_id: str, target_id: str, attributes: dict):
         """

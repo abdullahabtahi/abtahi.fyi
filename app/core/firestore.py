@@ -254,18 +254,129 @@ class FirestoreReviewStore:
                 raise ReviewStoreUnavailable("projection event is unavailable")
             if saved.to_dict().get("status") == "applied":
                 return
-            base = self.db.collection("users").document(uid).collection("private_study")
+            user_doc = self.db.collection("users").document(uid)
+            concept_ref = user_doc.collection("concepts").document(event.concept_id)
+            concept_snap = concept_ref.get(transaction=transaction)
+
+            study_base = user_doc.collection("private_study").document("state")
             transaction.set(
-                base.collection("citations").document(event.event_id),
+                study_base.collection("citations").document(event.event_id),
                 event.__dict__,
             )
             transaction.set(
-                base.collection("relationships").document(event.event_id),
+                study_base.collection("relationships").document(event.event_id),
                 event.__dict__,
             )
+            if concept_snap.exists:
+                c_data = concept_snap.to_dict() or {}
+                c_citations = list(c_data.get("citations", []))
+                if event.reviewed_citation and event.reviewed_citation not in c_citations:
+                    c_citations.append(event.reviewed_citation)
+                    transaction.update(concept_ref, {"citations": c_citations})
+
             transaction.update(event_ref, {"status": "applied"})
 
         apply_once(transaction)
+
+        try:
+            self._sync_signal_to_sqlite(uid, event)
+        except Exception:
+            pass
+
+    def _sync_signal_to_sqlite(self, uid: str, event: PrivateProjectionEvent) -> None:
+        import json
+        from datetime import datetime, timezone
+        from app.core.db import init_sqlite_db
+        from app.core.network import network_cache
+
+        prop_doc = self.db.collection("users").document(uid).collection("proposals").document(event.proposal_id).get()
+        prop_data = prop_doc.to_dict() if prop_doc.exists else {}
+
+        location = prop_data.get("location", "")
+        if ":" in location:
+            parts = location.split(":", 1)
+            source_domain_name = parts[0].strip()
+            source_title = parts[1].strip()
+        else:
+            source_domain_name = "External Signal"
+            source_title = location or "External Reference"
+
+        s_lower = source_domain_name.lower()
+        if "water" in s_lower or "watermba" in s_lower:
+            source_domain = "thewatermba.com"
+            source_url = "https://www.thewatermba.com/"
+        elif "bluedot" in s_lower:
+            source_domain = "blog.bluedot.org"
+            source_url = "https://blog.bluedot.org/"
+        else:
+            source_domain = source_domain_name.lower().replace(" ", "") + ".org"
+            source_url = f"https://{source_domain}"
+
+        excerpt = prop_data.get("excerpt", "")
+        reviewed_citation = event.reviewed_citation or prop_data.get("final_reviewed_content", "")
+        rationale = prop_data.get("rationale", "")
+        edge_type = event.relationship or prop_data.get("edge_type", "example_of")
+        connected_at = datetime.now(timezone.utc).isoformat()
+
+        conn = init_sqlite_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT title, citations_json FROM curriculum_concepts WHERE slug = ?", (event.concept_id,))
+        c_row = cursor.fetchone()
+        concept_title = c_row[0] if c_row else event.concept_id.replace("-", " ").title()
+
+        if c_row:
+            try:
+                c_citations = json.loads(c_row[1]) if c_row[1] else []
+            except Exception:
+                c_citations = []
+            if reviewed_citation and reviewed_citation not in c_citations:
+                c_citations.append(reviewed_citation)
+                cursor.execute(
+                    "UPDATE curriculum_concepts SET citations_json = ? WHERE slug = ?",
+                    (json.dumps(c_citations), event.concept_id)
+                )
+
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO connected_signals (
+                id, proposal_id, source_url, source_title, source_domain,
+                concept_slug, concept_title, edge_type, excerpt,
+                reviewed_citation, rationale, connected_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event.proposal_id,
+                event.proposal_id,
+                source_url,
+                source_title,
+                source_domain,
+                event.concept_id,
+                concept_title,
+                edge_type,
+                excerpt,
+                reviewed_citation,
+                rationale,
+                connected_at,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        network_cache.add_connected_signal({
+            "id": event.proposal_id,
+            "proposal_id": event.proposal_id,
+            "source_url": source_url,
+            "source_title": source_title,
+            "source_domain": source_domain,
+            "concept_slug": event.concept_id,
+            "concept_title": concept_title,
+            "edge_type": edge_type,
+            "excerpt": excerpt,
+            "reviewed_citation": reviewed_citation,
+            "rationale": rationale,
+            "connected_at": connected_at,
+        })
 
     def _get_operation_sync(self, uid: str, key: str) -> dict | None:
         document = self._operation_ref(uid, key).get()

@@ -150,6 +150,69 @@ synthesis by Abdullah Abtahi.{% endblock %}
           {% endif %}
         </article>
 
+        {% elif item.item_type == 'signal' %}
+        <!-- Connected Signal Entry (Unified Chronological Stream) -->
+        <article class="timeline-item timeline-signal group relative py-2" id="{{ item.id }}">
+          <!-- Metadata row -->
+          <div class="flex items-center gap-2 mb-2 text-xs font-mono flex-wrap">
+            <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-cyan-50 dark:bg-cyan-950/50 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60">
+              signal
+            </span>
+
+            {% if item.domain %}
+            <a href="{{ item.source_url or '#' }}" target="_blank" rel="noopener noreferrer"
+              class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 transition-colors inline-flex items-center gap-1 font-mono text-xs no-underline">
+              <span>{{ item.domain }}</span>
+              <svg class="w-3 h-3 text-stone-400 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+            {% endif %}
+
+            <div class="ml-auto inline-flex items-center gap-1.5 text-xs font-mono">
+              <span class="text-stone-400 dark:text-stone-500 text-[11px]">{{ item.edge_type | replace('_', ' ') }} &rarr;</span>
+              <a href="/concepts/{{ item.concept_slug }}" class="text-emerald-700 dark:text-emerald-400 hover:underline transition-colors no-underline font-medium">
+                {{ item.concept_title }}
+              </a>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <h3 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors leading-snug mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
+            {% if item.source_url %}
+            <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer" class="no-underline inline-flex items-baseline gap-1.5">
+              <span>{{ item.title }}</span>
+              <svg class="w-3.5 h-3.5 text-stone-400 opacity-60 inline-block self-center flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            </a>
+            {% else %}
+            {{ item.title }}
+            {% endif %}
+          </h3>
+
+          <!-- Excerpt quote -->
+          {% if item.excerpt %}
+          <blockquote class="border-l-2 border-cyan-400 dark:border-cyan-800 pl-3.5 py-1 my-2.5 text-xs text-stone-600 dark:text-stone-400 italic font-serif leading-relaxed bg-white/60 dark:bg-stone-900/60 rounded-r">
+            &ldquo;{{ item.excerpt }}&rdquo;
+          </blockquote>
+          {% endif %}
+
+          <!-- Reviewed citation commentary / synthesis -->
+          {% if item.reviewed_citation %}
+          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-2">
+            {{ item.reviewed_citation }}
+          </div>
+          {% endif %}
+
+          <!-- Tag & Concept link footer -->
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-stone-100 dark:border-stone-800/60 text-xs font-mono text-stone-400">
+            <span class="text-[11px]">#{{ item.edge_type | replace('_', '-') }}</span>
+            <span class="text-stone-300 dark:text-stone-700">&middot;</span>
+            <a href="/concepts/{{ item.concept_slug }}" class="text-[11px] text-stone-500 dark:text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 no-underline transition-colors">
+              Inspect concept in study map &rarr;
+            </a>
+          </div>
+        </article>
+
         {% else %}
         <!-- Original Riff / Essay Entry -->
         <article class="timeline-item timeline-riff group relative py-2" id="{{ item.id }}">

@@ -64,13 +64,67 @@ def load_curriculum_milestones() -> list[dict]:
     return milestones
 
 
+def load_connected_signals() -> list[dict]:
+    signals = []
+    try:
+        from app.core.db import init_sqlite_db
+        conn = init_sqlite_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, proposal_id, source_url, source_title, source_domain,
+                   concept_slug, concept_title, edge_type, excerpt,
+                   reviewed_citation, rationale, connected_at
+            FROM connected_signals
+            ORDER BY connected_at DESC
+            """
+        )
+        for row in cursor.fetchall():
+            try:
+                pub_dt = datetime.fromisoformat(row[11])
+                if pub_dt.tzinfo is None:
+                    pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                pub_dt = datetime.now(timezone.utc)
+
+            sig_id = row[0]
+            signals.append({
+                "id": f"signal-{sig_id}",
+                "item_type": "signal",
+                "proposal_id": row[1],
+                "title": row[3],
+                "canonical_url": row[2],
+                "source_url": row[2],
+                "domain": row[4],
+                "concept_slug": row[5],
+                "concept_title": row[6],
+                "edge_type": row[7],
+                "excerpt": row[8],
+                "reviewed_citation": row[9],
+                "rationale": row[10],
+                "published_at": pub_dt,
+                "edges": [
+                    {
+                        "source_id": f"signal-{sig_id}",
+                        "target_id": row[5],
+                        "edge_type": row[7],
+                    }
+                ],
+            })
+        conn.close()
+    except Exception:
+        pass
+    return signals
+
+
 @router.get("/", response_class=HTMLResponse)
 async def get_timeline(request: Request):
     items = loader.load_all_items()
     network_cache.load_from_items(items)
     milestones = load_curriculum_milestones()
+    signals = load_connected_signals()
 
-    combined = list(items) + list(milestones)
+    combined = list(items) + list(milestones) + list(signals)
     combined.sort(
         key=lambda x: x.published_at if hasattr(x, "published_at") else x.get("published_at"),
         reverse=True,
@@ -239,6 +293,8 @@ async def get_graph(request: Request):
 
     # Edge color mapping matching mattwood.fyi visual hierarchy
     EDGE_COLORS = {
+        "example_of": "#38bdf8",        # Sky Blue
+        "application_of": "#a78bfa",    # Lavender
         "supports": "#f06595",          # Rose / Pink
         "challenges": "#ffd43b",        # Yellow / Amber
         "develops_into": "#69db7c",     # Light Green
@@ -254,6 +310,10 @@ async def get_graph(request: Request):
             title = item_dict[node].title
             node_type = getattr(item_dict[node].item_type, "value", str(item_dict[node].item_type))
             url = f"/i/{node}"
+        elif node_data.get("node_type") == "signal":
+            title = node_data.get("title") or "Signal"
+            node_type = "signal"
+            url = node_data.get("url") or "#"
         else:
             title = node_data.get("title") or node.replace("-", " ").title()
             node_type = node_data.get("node_type", "concept")

@@ -140,6 +140,26 @@ def init_sqlite_db(db_path: str = "data/graph.db") -> sqlite3.Connection:
         );
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_concepts_module ON curriculum_concepts(module_id);")
+
+    # 6. Connected Signals & Citations Store (Propagated from Today Queue)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS connected_signals (
+            id TEXT PRIMARY KEY,
+            proposal_id TEXT NOT NULL,
+            source_url TEXT,
+            source_title TEXT NOT NULL,
+            source_domain TEXT,
+            concept_slug TEXT NOT NULL,
+            concept_title TEXT NOT NULL,
+            edge_type TEXT NOT NULL,
+            excerpt TEXT NOT NULL,
+            reviewed_citation TEXT NOT NULL,
+            rationale TEXT,
+            connected_at TEXT NOT NULL
+        );
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_connected_signals_concept ON connected_signals(concept_slug);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_connected_signals_date ON connected_signals(connected_at);")
     
     return conn
 
