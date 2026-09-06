@@ -15,16 +15,12 @@ async def get_capture(request: Request, identity: Identity = Depends(require_ide
 
 @router.post("/api/poll-feeds")
 async def poll_feeds(request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf)):
-    # Dispatch polling tasks in the background
-    try:
-        from app.ingest.poller import poll_all # noqa: F401
-        # Just mock triggering it in the background for now or call it
-        pass
-    except Exception:
-        pass
     return JSONResponse(
-        status_code=202,
-        content={"status": "accepted", "message": "Feed polling dispatched.", "feeds_queued": 1}
+        status_code=501,
+        content={
+            "status": "unavailable",
+            "message": "Feed polling is unavailable until durable ingestion is configured.",
+        },
     )
 
 @router.post("/api/consolidate")

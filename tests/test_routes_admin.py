@@ -15,15 +15,15 @@ app.dependency_overrides[require_identity] = lambda: Identity(uid="test-user", e
 app.dependency_overrides[require_csrf] = lambda: True
 
 @pytest.mark.asyncio
-async def test_poll_feeds_accepted():
+async def test_poll_feeds_reports_unavailable_until_durable_pipeline_exists():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post(
             "/api/poll-feeds",
             headers={"X-CSRF-Token": "test-token"},
             cookies={"session": "test-session"}
         )
-        assert response.status_code == 202
-        assert response.json()["status"] == "accepted"
+        assert response.status_code == 501
+        assert response.json()["status"] == "unavailable"
 
 @pytest.mark.asyncio
 async def test_poll_feeds_forbidden_no_csrf():
