@@ -9,7 +9,10 @@ class PublicContentLoader:
     def __init__(self, content_dir: str = "content/public"):
         # Absolute path relative to project root
         self.content_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), content_dir)
-        self.md = MarkdownIt("commonmark", {"html": True})
+        # Reuse a single cached MarkdownIt instance to avoid overhead
+        if not hasattr(PublicContentLoader, '_shared_md'):
+            PublicContentLoader._shared_md = MarkdownIt("commonmark", {"html": True})
+        self.md = PublicContentLoader._shared_md
 
     def load_all_items(self) -> list[PublicItem]:
         items = []
