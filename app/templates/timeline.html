@@ -17,16 +17,16 @@
   </header>
 
   <!-- Chronological Day Groups -->
-  <div class="space-y-12">
+  <div class="timeline-stream">
     {% for day in days %}
-    <section class="day-group">
+    <section class="day-group {% if not loop.first %}mt-24 pt-8 border-t border-stone-200 dark:border-stone-800{% endif %}">
       <!-- Day Header -->
-      <h2 class="day-header text-xs font-mono uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-6 pb-2 border-b border-stone-200 dark:border-stone-800">
+      <h2 class="day-header text-xs font-mono uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-8">
         <time datetime="{{ day.date_iso }}">{{ day.date_formatted }}</time>
       </h2>
 
       <!-- Items in this day -->
-      <div class="space-y-10">
+      <div class="space-y-16">
         {% for item in day.entries %}
         <article class="timeline-item group relative" id="{{ item.id }}">
 
@@ -47,15 +47,15 @@
             {% endif %}
 
             {% if item.edges %}
-            <span class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 tabular-nums">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-              {{ item.edges|length }}
-            </span>
+            <a href="/i/{{ item.id }}" class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors tabular-nums" title="{{ item.edges|length }} connections">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <span class="text-xs">{{ item.edges|length }}</span>
+            </a>
             {% endif %}
           </div>
 
           <!-- Title -->
-          <h3 class="text-xl font-serif font-medium text-stone-900 dark:text-stone-100 hover:text-stone-600 dark:hover:text-stone-300 transition-colors leading-snug mb-2">
+          <h3 class="text-xl font-serif font-medium text-stone-900 dark:text-stone-100 hover:text-pink-600 dark:hover:text-pink-400 transition-colors leading-snug mb-3">
             <a href="/i/{{ item.id }}" class="no-underline">
               {{ item.title }}
             </a>
@@ -63,25 +63,25 @@
 
           <!-- Excerpt quote if link or note premise -->
           {% if item.summary %}
-          <blockquote class="border-l-2 border-stone-300 dark:border-stone-700 pl-4 py-1 my-3 text-sm text-stone-600 dark:text-stone-400 italic font-serif">
+          <blockquote class="border-l-2 border-stone-300 dark:border-stone-700 pl-4 py-1 my-3 text-sm text-stone-600 dark:text-stone-400 italic font-serif leading-relaxed">
             {{ item.summary }}
           </blockquote>
           {% endif %}
 
           <!-- Commentary / Rendered HTML -->
           {% if item.commentary %}
-          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-2">
+          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-3">
             {{ item.commentary }}
           </div>
           {% elif item.content_html %}
-          <div class="prose prose-stone dark:prose-invert max-w-none text-sm font-serif leading-relaxed my-2">
+          <div class="prose prose-stone dark:prose-invert max-w-none text-sm font-serif leading-relaxed my-3">
             {{ item.content_html | safe }}
           </div>
           {% endif %}
 
           <!-- Tags -->
           {% if item.tags %}
-          <div class="flex flex-wrap gap-2 mt-3">
+          <div class="flex flex-wrap gap-2 mt-4">
             {% for tag in item.tags %}
             <span class="text-xs font-mono text-stone-400 dark:text-stone-500">#{{ tag }}</span>
             {% endfor %}

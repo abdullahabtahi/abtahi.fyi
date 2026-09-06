@@ -1,13 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Graph - abtahi.fyi{% endblock %}
+{% block title %}Network Map — abtahi.fyi{% endblock %}
+{% block meta_description %}Interactive force-directed graph visualizing conceptual relationships across notes, links, and emergent themes.{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <h1 class="text-3xl mb-4">Network Map</h1>
-    <p class="text-stone-400 mb-8">A visual exploration of the conceptual connections within the study corpus.</p>
+<div class="max-w-4xl mx-auto py-10 px-4 sm:px-0">
+    <header class="mb-8">
+        <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+            Network Map
+        </h1>
+        <p class="text-sm font-serif text-stone-600 dark:text-stone-400">
+            A visual exploration of conceptual connections across notes, links, and emergent themes.
+        </p>
+    </header>
     
-    <div id="graph-container" class="w-full h-[600px] border border-stone-800 rounded bg-stone-900/50"></div>
+    <div class="relative rounded-xl border border-stone-200 dark:border-stone-800 overflow-hidden shadow-sm">
+        <div id="graph-container" class="w-full h-[600px] bg-stone-50 dark:bg-stone-950"></div>
+        
+        <!-- Subtle Help Pill -->
+        <div class="absolute bottom-4 left-4 text-[11px] font-mono text-stone-500 dark:text-stone-400 bg-white/80 dark:bg-stone-900/80 backdrop-blur px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-800 shadow-sm pointer-events-none">
+            Click node to view article &bull; Drag to explore
+        </div>
+    </div>
 </div>
 
 <!-- Load Force Graph -->
@@ -17,32 +31,52 @@
     document.addEventListener("DOMContentLoaded", function() {
         const nodes = {{ nodes | tojson | safe }};
         const links = {{ links | tojson | safe }};
-        
         const elem = document.getElementById('graph-container');
-        
-        // Define aesthetic colors based on The Systems Scriptorium
-        const colorPalette = [
-            '#a8a29e', // stone-400
-            '#78716c', // stone-500
-            '#57534e', // stone-600
-            '#d6d3d1'  // stone-300
-        ];
-        
+        if (!elem) return;
+
+        function isDarkMode() {
+            return document.documentElement.classList.contains('dark');
+        }
+
+        const darkBg = '#0c0a09';
+        const lightBg = '#fafaf9';
+        const darkNode = '#e7e5e4';
+        const lightNode = '#292524';
+        const darkLink = '#44403c';
+        const lightLink = '#d6d3d1';
+
         const Graph = ForceGraph()(elem)
+            .width(elem.clientWidth)
+            .height(elem.clientHeight)
             .graphData({ nodes, links })
             .nodeLabel('title')
-            .nodeColor(node => colorPalette[node.group % colorPalette.length])
-            .linkColor(() => '#44403c') // stone-700
-            .nodeRelSize(6)
-            .backgroundColor('#0c0a09') // stone-950
+            .nodeColor(() => isDarkMode() ? darkNode : lightNode)
+            .linkColor(() => isDarkMode() ? darkLink : lightLink)
+            .nodeRelSize(7)
+            .backgroundColor(isDarkMode() ? darkBg : lightBg)
             .onNodeClick(node => {
                 window.location.href = `/i/${node.id}`;
             });
+
+        // Center graph after physics warm-up
+        setTimeout(() => {
+            Graph.zoomToFit(500, 60);
+        }, 350);
             
-        // Handle window resize
+        // Resize handling
         window.addEventListener('resize', () => {
             Graph.width(elem.clientWidth).height(elem.clientHeight);
+            Graph.zoomToFit(400, 60);
         });
+
+        // Sync with Theme Toggle
+        const observer = new MutationObserver(() => {
+            const dark = isDarkMode();
+            Graph.backgroundColor(dark ? darkBg : lightBg);
+            Graph.nodeColor(() => dark ? darkNode : lightNode);
+            Graph.linkColor(() => dark ? darkLink : lightLink);
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     });
 </script>
 {% endblock %}
