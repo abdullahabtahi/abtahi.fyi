@@ -1,0 +1,11 @@
+<div class="text-sm text-amber-700" role="alert" data-idempotency-key="{{ idempotency_key }}">
+  Review storage is temporarily unavailable. Your selection was not saved.
+  <button
+    type="button"
+    class="underline"
+    hx-post="{{ action_url }}"
+    hx-headers='{"Idempotency-Key": "{{ idempotency_key }}", "X-CSRF-Token": "{{ csrf_token }}"}'
+    hx-target="closest article"
+    hx-swap="outerHTML"
+  >Retry</button>
+</div>

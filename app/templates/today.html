@@ -35,9 +35,18 @@
 
           <p class="text-sm text-stone-600 leading-relaxed mb-6">{{ proposal.body }}</p>
 
-          <p class="pt-4 border-t border-stone-100 text-xs font-mono text-stone-400">
-            Review actions are unavailable until durable study storage is configured.
-          </p>
+          <div class="pt-4 border-t border-stone-100 flex flex-wrap gap-2" data-csrf-token="{{ csrf_token }}">
+            {% for command, label in [("connect", "Connect"), ("defer", "Defer"), ("dismiss", "Dismiss")] %}
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
+              hx-post="/api/proposals/{{ proposal.id }}/{{ command }}"
+              hx-target="#proposal-{{ proposal.id }}"
+              hx-swap="outerHTML"
+              hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
+            >{{ label }}</button>
+            {% endfor %}
+          </div>
         </article>
         {% endfor %}
       {% else %}

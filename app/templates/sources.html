@@ -6,7 +6,8 @@
   
   <div class="border-t border-gray-200 pt-6 mt-8">
     <h3 class="text-xl font-bold mb-4">Add Reflection</h3>
-    <form hx-post="/api/reflections" hx-target="#reflection-result" class="space-y-4">
+    <form hx-post="/api/reflections" hx-target="#reflection-result" class="space-y-4" data-csrf-token="{{ csrf_token }}"
+      hx-headers='js:{"Idempotency-Key": this.dataset.idempotencyKey || (this.dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.dataset.csrfToken}'>
       <textarea name="reflection_text" rows="4" class="w-full border rounded p-2 text-sm" placeholder="Reflect on your reading..."></textarea>
       <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded text-sm font-bold">Submit</button>
     </form>

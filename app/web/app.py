@@ -87,7 +87,23 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
         )
         
         # Privacy-by-Design Firewall: Filter out all private study routes
-        private_prefixes = ["/study", "/api/study", "/today", "/api/today", "/concepts", "/api/concepts", "/sources", "/api/sources", "/capture", "/api/capture"]
+        private_prefixes = [
+            "/study",
+            "/api/study",
+            "/today",
+            "/api/today",
+            "/concepts",
+            "/api/concepts",
+            "/sources",
+            "/api/sources",
+            "/capture",
+            "/api/capture",
+            "/api/proposals",
+            "/api/reflections",
+            "/api/operations",
+            "/api/poll-feeds",
+            "/api/consolidate",
+        ]
         
         filtered_paths = {}
         for path, path_item in openapi_schema.get("paths", {}).items():

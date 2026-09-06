@@ -142,6 +142,7 @@ class InteractionRecord(BaseModel):
     concept_id: NonEmptyText | None = None
     user_decision: DecisionCommand | None = None
     reflection_text: str | None = None
+    reviewed_content: str | None = None
     diagnostic_response: str | None = None
     timestamp: datetime
 
@@ -151,6 +152,14 @@ class InteractionRecord(BaseModel):
             if not self.proposal_id or not self.user_decision:
                 raise ValueError("proposal_id and user_decision required for proposal review")
         return self
+
+
+class ReviewResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    operation_key: NonEmptyText
+    record: InteractionRecord
+    status: str = "completed"
 
 class ConceptNode(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)

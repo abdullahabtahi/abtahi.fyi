@@ -64,11 +64,13 @@ class SessionRequest(BaseModel):
 def create_session(
     payload: SessionRequest, 
     response: Response, 
-    verifier: TokenVerifier = Depends(get_token_verifier)
+    verifier: TokenVerifier = Depends(get_token_verifier),
+    allowed_email: str = Depends(get_allowed_email),
+    csrf_secret: str = Depends(get_csrf_secret),
 ):
     try:
         identity = identity_from_claims(
-            verifier.verify_id_token(payload.idToken), get_allowed_email()
+            verifier.verify_id_token(payload.idToken), allowed_email
         )
         expires_in = timedelta(days=14)
         cookie = verifier.create_session_cookie(payload.idToken, expires_in=expires_in)
@@ -100,6 +102,6 @@ def create_session(
         "csrfToken": generate_csrf_token(
             identity.uid,
             csrf_nonce,
-            get_csrf_secret(),
+            csrf_secret,
         ),
     }

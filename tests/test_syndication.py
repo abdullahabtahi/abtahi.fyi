@@ -5,10 +5,9 @@ from app.web.app import create_app
 from app.core.network import NetworkScienceCache
 import os
 
-app = create_app()
-
 @pytest_asyncio.fixture
 async def client():
+    app = create_app()
     # Setup test public content directory if it doesn't exist
     content_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "content", "public")
     os.makedirs(content_dir, exist_ok=True)
@@ -19,7 +18,7 @@ async def client():
         f.write("summary: This is a test summary\n")
         f.write("tags: [\"test\", \"agent\"]\n")
         f.write("---\n")
-        f.write("Test content\n")
+        f.write("Test content <script>alert('unsafe')</script>\n")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -71,6 +70,7 @@ async def test_openapi_filters_private_routes(client):
 
     # Private study routes should NOT be present (assuming /study is a private route)
     assert "/study" not in paths
+    assert "/capture" not in paths
 
 @pytest.mark.asyncio
 async def test_timeline(client):
@@ -86,6 +86,8 @@ async def test_permalink(client):
     assert "text/html" in response.headers["content-type"]
     assert "Test Public Item" in response.text
     assert "Test content" in response.text
+    assert "<script>alert('unsafe')</script>" not in response.text
+    assert "&lt;script&gt;alert('unsafe')&lt;/script&gt;" in response.text
 
 @pytest.mark.asyncio
 async def test_graph_routes(client):
@@ -93,3 +95,10 @@ async def test_graph_routes(client):
         response = await client.get(route)
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
+
+
+@pytest.mark.asyncio
+async def test_public_navigation_does_not_expose_private_study_route(client):
+    response = await client.get("/")
+
+    assert 'href="/today"' not in response.text

@@ -1,0 +1,7 @@
+<div class="text-sm text-emerald-700" role="status" data-operation-key="{{ result.operation_key }}">
+  {% if result.record.user_decision %}
+    {% if result.record.user_decision.value == "DEFER" %}Deferred{% else %}{{ result.record.user_decision.value.title() }}ed{% endif %}
+  {% else %}
+    Reflection saved
+  {% endif %}
+</div>

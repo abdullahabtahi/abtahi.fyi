@@ -53,6 +53,19 @@ def test_session_exchange_sets_httponly_cookie(client, fake_verifier):
     assert "HttpOnly" in response.headers["set-cookie"]
 
 
+def test_session_exchange_uses_injected_allowlist(client, fake_verifier, monkeypatch):
+    monkeypatch.setenv("ALLOWLISTED_EMAIL", "different@example.com")
+    fake_verifier.claims = {
+        "uid": "owner",
+        "email": "owner@example.com",
+        "email_verified": True,
+    }
+
+    response = client.post("/api/auth/session", json={"idToken": "fake_token"})
+
+    assert response.status_code == 200
+
+
 @pytest.mark.parametrize(
     "claims",
     [
