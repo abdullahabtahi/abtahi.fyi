@@ -27,6 +27,9 @@ def get_allowed_email() -> str:
 def require_identity(request: Request, verifier: TokenVerifier = Depends(get_token_verifier), allowed_email: str = Depends(get_allowed_email)) -> Identity:
     session_cookie = request.cookies.get("session")
     if not session_cookie:
+        from app.settings import Settings
+        if Settings().ENV == "development":
+            return Identity(uid="mock-uid", email=allowed_email)
         raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/sign-in"})
 
     try:

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = Field(default=None)
     ALLOWED_LEARNER_EMAIL: str = Field(default="abdullah@example.com")
     PORT: int = Field(default=8000)
-    ENV: str = Field(default="development")
+    ENV: str = Field(default="production")
 
     @model_validator(mode='before')
     @classmethod
