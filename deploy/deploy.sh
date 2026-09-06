@@ -32,6 +32,17 @@ echo "Project: ${GCP_PROJECT_ID} | Region: ${GCP_REGION}"
 echo "Required Challenge Label: dev-tutorial=cloud-run-ai-challenge"
 echo "================================================================================"
 
+ENV_VARS_FILE=$(mktemp)
+cat <<EOF > "${ENV_VARS_FILE}"
+GCP_PROJECT_ID: "${GCP_PROJECT_ID}"
+GCP_LOCATION: "${GCP_REGION}"
+ALLOWLISTED_EMAIL: "${ALLOWLISTED_EMAIL}"
+ENV: "production"
+INGESTION_OWNER_UID: "${INGESTION_OWNER_UID}"
+APPROVED_FEED_URLS: "${APPROVED_FEED_URLS}"
+EOF
+trap 'rm -f "${ENV_VARS_FILE}"' EXIT
+
 DEPLOY_ARGS=(
     "${SERVICE_NAME}"
     "--project=${GCP_PROJECT_ID}"
@@ -39,7 +50,7 @@ DEPLOY_ARGS=(
     "--allow-unauthenticated"
     "--labels=dev-tutorial=cloud-run-ai-challenge"
     "--port=8080"
-    "--set-env-vars=GCP_PROJECT_ID=${GCP_PROJECT_ID},GCP_LOCATION=${GCP_REGION},ALLOWLISTED_EMAIL=${ALLOWLISTED_EMAIL},ENV=production,INGESTION_OWNER_UID=${INGESTION_OWNER_UID},APPROVED_FEED_URLS=${APPROVED_FEED_URLS}"
+    "--env-vars-file=${ENV_VARS_FILE}"
     "--set-secrets=CSRF_SECRET=CSRF_SECRET:latest"
 )
 
