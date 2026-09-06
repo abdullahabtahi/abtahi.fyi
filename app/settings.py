@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     
     # AI & Core Settings
     GEMINI_API_KEY: str | None = Field(default=None)
+    GCP_LOCATION: str = Field(default="us-central1")
     ALLOWED_LEARNER_EMAIL: str = Field(default="abdullah@example.com")
     PORT: int = Field(default=8000)
     ENV: str = Field(default="production")

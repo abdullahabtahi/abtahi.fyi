@@ -42,6 +42,7 @@ def generate_proposal(
     source_chunk_id: str,
     chunk_text: str,
     consent_store: SourceConsentStore | None = None,
+    client: Any = None,
 ) -> ConnectionProposal:
     if (
         consent_store is None
@@ -69,7 +70,24 @@ def generate_proposal(
     concept_id = "concept_123" if results else "mock_concept"
     
     # 2. Query Gemini (T009)
-    client = genai.Client()
+    # Prefer Vertex AI using GCP project credentials, fallback to AI Studio or mocked Client
+    if client is None:
+        try:
+            from app.settings import Settings
+            settings = Settings()
+        except Exception:
+            settings = None
+
+        if settings and settings.GEMINI_API_KEY and settings.GEMINI_API_KEY not in ("mock-api-key", ""):
+            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        elif settings and settings.GCP_PROJECT_ID:
+            client = genai.Client(
+                vertexai=True,
+                project=settings.GCP_PROJECT_ID,
+                location=getattr(settings, "GCP_LOCATION", "us-central1"),
+            )
+        else:
+            client = genai.Client()
     
     prompt = (
         "You are an AI linking concepts. "
@@ -79,7 +97,7 @@ def generate_proposal(
     )
     
     response = client.models.generate_content(
-        model="gemini-3.8-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
         config={
             "response_mime_type": "application/json",
