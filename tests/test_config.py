@@ -1,12 +1,14 @@
 import pytest
 import os
 from pydantic import ValidationError
+from pydantic_settings import SettingsConfigDict
 from app.settings import Settings
 
 @pytest.fixture(autouse=True)
-def clean_env():
+def clean_env(monkeypatch):
     old = os.environ.copy()
     os.environ.clear()
+    monkeypatch.setattr(Settings, "model_config", SettingsConfigDict(**{**Settings.model_config, "env_file": None}))
     yield
     os.environ.clear()
     os.environ.update(old)

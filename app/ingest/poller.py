@@ -39,32 +39,6 @@ class CanonicalURL:
     def __str__(self):
         return self.canonical
 
-import socket
-import ipaddress
-
-class SSRFValidationError(Exception):
-    pass
-
-def validate_outbound_url(url: str) -> str:
-    """
-    Resolves hostname and blocks RFC 1918, loopback, and Cloud Metadata endpoints.
-    """
-    parsed = urlparse(url)
-    hostname = parsed.hostname
-    
-    if not hostname:
-        raise SSRFValidationError(f"Invalid URL: {url}")
-        
-    try:
-        ip_addr_str = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(ip_addr_str)
-    except socket.gaierror:
-        raise SSRFValidationError(f"Could not resolve hostname: {hostname}")
-        
-        raise SSRFValidationError(f"SSRF Attempt blocked. Forbidden IP: {ip}")
-        
-    return url
-
 import httpx
 import asyncio
 from typing import Optional, Tuple

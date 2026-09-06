@@ -30,7 +30,9 @@ def fake_verifier():
     return FakeTokenVerifier()
 
 @pytest.fixture(autouse=True)
-def setup_test_env():
+def setup_test_env(request):
+    if "clean_env" in request.fixturenames:
+        return
     import os
     os.environ.setdefault("GCP_PROJECT_ID", "test-project")
     os.environ.setdefault("CSRF_SECRET", "test-secret")

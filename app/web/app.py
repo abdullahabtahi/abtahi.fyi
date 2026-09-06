@@ -38,7 +38,7 @@ def initialize_projection() -> None:
 async def lifespan(app: FastAPI):
     try:
         app.state.initialize_projection()
-    except (OSError, RuntimeError, sqlite3.Error) as error:
+    except Exception as error:
         app.state.readiness.mark_failed(type(error).__name__)
         logger.error("Projection initialization failed: %s", type(error).__name__)
     else:
