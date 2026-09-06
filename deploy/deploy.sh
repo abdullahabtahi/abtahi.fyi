@@ -23,6 +23,8 @@ GCP_REGION="${GCP_REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-abtahi-fyi}"
 IMAGE_NAME="${IMAGE_NAME:-}"
 ALLOWLISTED_EMAIL="${ALLOWLISTED_EMAIL:-abdullahabtahi21@gmail.com}"
+INGESTION_OWNER_UID="${INGESTION_OWNER_UID:-KGEh2GnCMOQc93yi4pRzeFYwMfJ2}"
+APPROVED_FEED_URLS="${APPROVED_FEED_URLS:-https://blog.bluedot.org/feed,https://www.thewatermba.com/feed}"
 
 echo "================================================================================"
 echo "Deploying Cloud Run Service: ${SERVICE_NAME}"
@@ -37,7 +39,7 @@ DEPLOY_ARGS=(
     "--allow-unauthenticated"
     "--labels=dev-tutorial=cloud-run-ai-challenge"
     "--port=8080"
-    "--set-env-vars=GCP_PROJECT_ID=${GCP_PROJECT_ID},GCP_LOCATION=${GCP_REGION},ALLOWLISTED_EMAIL=${ALLOWLISTED_EMAIL},ENV=production"
+    "--set-env-vars=GCP_PROJECT_ID=${GCP_PROJECT_ID},GCP_LOCATION=${GCP_REGION},ALLOWLISTED_EMAIL=${ALLOWLISTED_EMAIL},ENV=production,INGESTION_OWNER_UID=${INGESTION_OWNER_UID},APPROVED_FEED_URLS=${APPROVED_FEED_URLS}"
     "--set-secrets=CSRF_SECRET=CSRF_SECRET:latest"
 )
 
