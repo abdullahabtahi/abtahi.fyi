@@ -1,21 +1,22 @@
 ---
 id: eebench-circuit-design
 type: link
-title: "EEBench: Measuring Hardware Efficiency in Tensor Compilers"
+title: "EEBench: Physics-Backed Electrical Engineering Benchmark by atopile"
 date: '2026-09-04T10:00:00Z'
-canonical_url: https://eebench.org/paper/circuit-design
+canonical_url: https://eebench.org/
 domain: eebench.org
-summary: Hardware-aware tensor scheduling reduces memory bus contention by 42% across dense attention kernels.
-commentary: The critical insight here is that memory bus saturation, not raw arithmetic FLOP limits, dictates real-world token generation latency at batch size 1.
+summary: A physics-backed benchmark evaluating frontier AI models on electrical engineering tasks and real circuit synthesis using SPICE simulation and component tolerance analysis.
+commentary: Unlike subjective LLM-as-a-judge evaluations, EEBench grounds agentic evaluation in physical reality. By expressing hardware as code (atopile), AI agents iteratively modify netlists and run SPICE simulations to verify physical constraints.
 tags:
   - hardware
-  - tensor-compilers
+  - circuit-design
   - benchmarking
+  - atopile
 edges:
   - target: declarative-attention
     type: supports
-    reason: Validates memory bus efficiency when evaluating declarative attention kernels
+    reason: Demonstrates code-native declarative hardware representation and physics-based validation
 ---
-> "Hardware-aware tensor scheduling reduces memory bus contention by 42% across dense attention kernels."
+> "A physics-backed benchmark for frontier-model electrical-engineering performance."
 
-The critical insight here is that memory bus saturation, not raw arithmetic FLOP limits, dictates real-world token generation latency at batch size 1. Prior benchmarking frameworks over-indexed on synthetic throughput metrics while ignoring thermal throttling and memory-bandwidth stalls.
+EEBench tests whether frontier AI models can perform electrical engineering design using code-native representations (atopile). Rather than grading textual explanations or visual schematics, it compiles designs to SPICE simulations and verifies component tolerance and thermal constraints against real physics.

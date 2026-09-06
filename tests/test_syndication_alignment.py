@@ -62,7 +62,7 @@ async def test_timeline_single_column_day_headers_and_badges(app_client):
 
     # Verify item titles and badges
     assert "Declarative Attention in Autonomous Systems" in html
-    assert "EEBench: Measuring Hardware Efficiency in Tensor Compilers" in html
+    assert "EEBench: Physics-Backed Electrical Engineering Benchmark by atopile" in html
 
 @pytest.mark.asyncio
 async def test_permalink_relationship_groups_and_superseded_banner(app_client):
