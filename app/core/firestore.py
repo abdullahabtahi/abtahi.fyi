@@ -140,3 +140,18 @@ class FirestoreReviewStore:
             .stream()
         )
         return [document.to_dict() for document in documents]
+
+
+class FirestoreSourceConsentStore:
+    def __init__(self, db_client) -> None:
+        self.db = db_client
+
+    def has_external_model_consent(self, source_revision_id: str) -> bool:
+        document = (
+            self.db.collection("source_revisions")
+            .document(source_revision_id)
+            .collection("consents")
+            .document("external_model")
+            .get()
+        )
+        return document.exists and document.to_dict().get("granted") is True

@@ -1,8 +1,7 @@
 import json
 import sqlite3
 import uuid
-from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 from google import genai
 from pydantic import BaseModel
@@ -24,6 +23,11 @@ class ProvenanceError(Exception):
 class SourceConsentError(PermissionError):
     """Raised before private source content leaves the application."""
 
+
+class SourceConsentStore(Protocol):
+    def has_external_model_consent(self, source_revision_id: str) -> bool:
+        ...
+
 class ProposerOutput(BaseModel):
     edge_type: EdgeType
     match_strength: MatchStrength
@@ -37,9 +41,12 @@ class ProposerOutput(BaseModel):
 def generate_proposal(
     source_chunk_id: str,
     chunk_text: str,
-    consent_checker: Callable[[str], bool] | None = None,
+    consent_store: SourceConsentStore | None = None,
 ) -> ConnectionProposal:
-    if consent_checker is None or not consent_checker(source_chunk_id):
+    if (
+        consent_store is None
+        or not consent_store.has_external_model_consent(source_chunk_id)
+    ):
         raise SourceConsentError(
             "source revision has not granted consent for external model processing"
         )
