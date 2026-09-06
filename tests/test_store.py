@@ -66,3 +66,17 @@ def test_lint_graph_raises_dangling_edge_error():
     import pytest
     with pytest.raises(DanglingEdgeError, match="b"):
         lint_graph(items, edges)
+
+
+def test_firestore_review_store_implements_review_store_protocol():
+    from unittest.mock import MagicMock
+    from app.core.firestore import FirestoreReviewStore, ReviewStore
+
+    mock_db = MagicMock()
+    store = FirestoreReviewStore(mock_db)
+    assert isinstance(store, ReviewStore)
+    assert hasattr(store, "get_pending_proposals")
+    assert callable(store.get_pending_proposals)
+    assert hasattr(store, "run_proposal_once")
+    assert hasattr(store, "apply_private_projection")
+

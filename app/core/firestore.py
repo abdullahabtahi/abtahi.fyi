@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from google.cloud.firestore_v1 import transactional
 
@@ -23,6 +23,7 @@ class ReviewStoreUnavailable(ReviewStoreError):
     """The durable review store could not complete an operation."""
 
 
+@runtime_checkable
 class ReviewStore(Protocol):
     async def run_once(
         self,
@@ -58,6 +59,68 @@ class ReviewStore(Protocol):
         self, uid: str, event: PrivateProjectionEvent
     ) -> None:
         ...
+
+
+def resolve_article_url(
+    source_domain: str,
+    source_title: str,
+    location: str = "",
+    explicit_url: str | None = None,
+) -> str:
+    from urllib.parse import urlparse
+
+    clean_domain = (
+        source_domain.replace("https://", "").replace("http://", "").strip("/")
+    )
+    if explicit_url and explicit_url.strip():
+        parsed = urlparse(explicit_url.strip())
+        path = parsed.path.rstrip("/")
+        if path and path not in ("", "/"):
+            return explicit_url.strip()
+
+    text = f"{source_title} {location}".lower()
+
+    if "desalination" in text:
+        return "https://www.thewatermba.com/p/where-should-we-build-a-desalination"
+    if "neom" in text:
+        return "https://www.thewatermba.com/p/the-day-the-neom-backlog-disappeared"
+    if "membrane" in text or "fouling" in text:
+        return "https://www.thewatermba.com/p/the-trick-is-inside-the-membrane"
+    if "spain" in text:
+        return "https://www.thewatermba.com/p/how-spains-emptiest-province-manages"
+    if "platform" in text:
+        return "https://www.thewatermba.com/p/platforms-not-projects"
+    if "super trend" in text:
+        return "https://www.thewatermba.com/p/water-is-a-30-50-year-super-trend"
+    if "fukushima" in text:
+        return "https://www.thewatermba.com/p/fukushima-was-a-water-pump-story"
+
+    if (
+        "best interest" in text
+        or "expense" in text
+        or "micro-approval" in text
+        or "approval" in text
+    ):
+        return "https://blog.bluedot.org/p/expenses"
+    if "facilitate" in text:
+        return "https://blog.bluedot.org/p/how-i-facilitate"
+    if "comms" in text:
+        return "https://blog.bluedot.org/p/ai-safety-comms-work-that-i-would"
+    if "rapid grant" in text:
+        return "https://blog.bluedot.org/p/weve-given-out-50000-in-rapid-grants"
+    if "vibe-code" in text:
+        return "https://blog.bluedot.org/p/why-you-should-vibe-code-your-ai"
+
+    import re
+
+    clean_slug = re.sub(r"[^\w\s-]", "", source_title).strip().lower().replace(" ", "-")
+    clean_slug = re.sub(r"-+", "-", clean_slug)
+    if "watermba" in clean_domain:
+        return f"https://www.thewatermba.com/p/{clean_slug}"
+    if "bluedot" in clean_domain:
+        return f"https://blog.bluedot.org/p/{clean_slug}"
+
+    return f"https://{clean_domain}"
 
 
 class FirestoreReviewStore:
@@ -282,68 +345,6 @@ class FirestoreReviewStore:
             self._sync_signal_to_sqlite(uid, event)
         except Exception:
             pass
-
-def resolve_article_url(
-    source_domain: str,
-    source_title: str,
-    location: str = "",
-    explicit_url: str | None = None,
-) -> str:
-    from urllib.parse import urlparse
-
-    clean_domain = (
-        source_domain.replace("https://", "").replace("http://", "").strip("/")
-    )
-    if explicit_url and explicit_url.strip():
-        parsed = urlparse(explicit_url.strip())
-        path = parsed.path.rstrip("/")
-        if path and path not in ("", "/"):
-            return explicit_url.strip()
-
-    text = f"{source_title} {location}".lower()
-
-    if "desalination" in text:
-        return "https://www.thewatermba.com/p/where-should-we-build-a-desalination"
-    if "neom" in text:
-        return "https://www.thewatermba.com/p/the-day-the-neom-backlog-disappeared"
-    if "membrane" in text or "fouling" in text:
-        return "https://www.thewatermba.com/p/the-trick-is-inside-the-membrane"
-    if "spain" in text:
-        return "https://www.thewatermba.com/p/how-spains-emptiest-province-manages"
-    if "platform" in text:
-        return "https://www.thewatermba.com/p/platforms-not-projects"
-    if "super trend" in text:
-        return "https://www.thewatermba.com/p/water-is-a-30-50-year-super-trend"
-    if "fukushima" in text:
-        return "https://www.thewatermba.com/p/fukushima-was-a-water-pump-story"
-
-    if (
-        "best interest" in text
-        or "expense" in text
-        or "micro-approval" in text
-        or "approval" in text
-    ):
-        return "https://blog.bluedot.org/p/expenses"
-    if "facilitate" in text:
-        return "https://blog.bluedot.org/p/how-i-facilitate"
-    if "comms" in text:
-        return "https://blog.bluedot.org/p/ai-safety-comms-work-that-i-would"
-    if "rapid grant" in text:
-        return "https://blog.bluedot.org/p/weve-given-out-50000-in-rapid-grants"
-    if "vibe-code" in text:
-        return "https://blog.bluedot.org/p/why-you-should-vibe-code-your-ai"
-
-    import re
-
-    clean_slug = re.sub(r"[^\w\s-]", "", source_title).strip().lower().replace(" ", "-")
-    clean_slug = re.sub(r"-+", "-", clean_slug)
-    if "watermba" in clean_domain:
-        return f"https://www.thewatermba.com/p/{clean_slug}"
-    if "bluedot" in clean_domain:
-        return f"https://blog.bluedot.org/p/{clean_slug}"
-
-    return f"https://{clean_domain}"
-
 
     def _sync_signal_to_sqlite(self, uid: str, event: PrivateProjectionEvent) -> None:
         import json
