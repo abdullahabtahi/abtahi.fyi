@@ -589,3 +589,147 @@ class FirestoreConceptStore:
 
         return await asyncio.to_thread(fetch)
 
+
+def hydrate_sqlite_from_firestore(uid: str, conn) -> None:
+    """
+    Hydrates local SQLite projection tables (curriculum and signals) from persistent
+    Firestore state on container startup if SQLite tables are empty.
+    """
+    if not uid:
+        return
+    try:
+        import json
+        import os
+        from datetime import datetime, timezone
+        from google.cloud import firestore
+
+        project_id = os.getenv("GCP_PROJECT_ID", "spatial-cat-489006-a4")
+        client = firestore.Client(project=project_id)
+        user_ref = client.collection("users").document(uid)
+        cursor = conn.cursor()
+
+        # 1. Hydrate Curriculum Milestones & Concepts if empty
+        cursor.execute("SELECT count(*) FROM curriculum_milestones")
+        if cursor.fetchone()[0] == 0:
+            modules_docs = list(user_ref.collection("modules").stream())
+            concepts_docs = list(user_ref.collection("concepts").stream())
+
+            concepts_by_mod: dict[str, list[dict]] = {}
+            for c_doc in concepts_docs:
+                c_data = c_doc.to_dict() or {}
+                mod_id = c_data.get("module", "M1L1")
+                concepts_by_mod.setdefault(mod_id, []).append(c_data)
+
+                now_iso = c_data.get("created_at") or datetime.now(timezone.utc).isoformat()
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO curriculum_concepts
+                    (slug, title, module_id, module_title, summary, synthesis, citations_json, prerequisites_json, keywords_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        c_data.get("slug", c_doc.id),
+                        c_data.get("title", c_doc.id),
+                        mod_id,
+                        c_data.get("module_title", f"Module {mod_id}"),
+                        c_data.get("summary", ""),
+                        c_data.get("synthesis", ""),
+                        json.dumps(c_data.get("citations", [])),
+                        json.dumps(c_data.get("prerequisites", [])),
+                        json.dumps(c_data.get("keywords", [])),
+                        now_iso,
+                    ),
+                )
+
+            for m_doc in modules_docs:
+                m_data = m_doc.to_dict() or {}
+                m_id = m_data.get("module_id", m_doc.id)
+                mod_concepts = concepts_by_mod.get(m_id, [])
+                mod_concepts.sort(key=lambda c: (c.get("order", 0), c.get("slug", "")))
+                slugs = [c.get("slug") for c in mod_concepts]
+                now_iso = datetime.now(timezone.utc).isoformat()
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO curriculum_milestones
+                    (module_id, title, summary, concepts_count, concept_slugs_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        m_id,
+                        m_data.get("title", f"Module {m_id}"),
+                        m_data.get("summary", ""),
+                        len(mod_concepts),
+                        json.dumps(slugs),
+                        now_iso,
+                    ),
+                )
+
+        # 2. Hydrate Connected Signals if empty
+        cursor.execute("SELECT count(*) FROM connected_signals")
+        if cursor.fetchone()[0] == 0:
+            proposals = list(user_ref.collection("proposals").where("status", "==", "CONNECTED").stream())
+            for p in proposals:
+                data = p.to_dict() or {}
+                location = data.get("location", "")
+                if ":" in location:
+                    parts = location.split(":", 1)
+                    source_domain_name = parts[0].strip()
+                    source_title = parts[1].strip()
+                else:
+                    source_domain_name = "External Signal"
+                    source_title = location or "External Reference"
+
+                s_lower = source_domain_name.lower()
+                if "water" in s_lower or "watermba" in s_lower:
+                    source_domain = "thewatermba.com"
+                    source_url = "https://www.thewatermba.com/"
+                elif "bluedot" in s_lower:
+                    source_domain = "blog.bluedot.org"
+                    source_url = "https://blog.bluedot.org/"
+                else:
+                    source_domain = source_domain_name.lower().replace(" ", "") + ".org"
+                    source_url = f"https://{source_domain}"
+
+                concept_slug = data.get("concept_id")
+                edge_type = data.get("edge_type", "example_of")
+                excerpt = data.get("excerpt", "")
+                citation = data.get("final_reviewed_content") or data.get("proposed_cited_addition", "")
+                rationale = data.get("rationale", "")
+                connected_at = data.get("reviewed_at") or datetime.now(timezone.utc).isoformat()
+                if isinstance(connected_at, datetime):
+                    connected_at = connected_at.isoformat()
+
+                cursor.execute("SELECT title, citations_json FROM curriculum_concepts WHERE slug = ?", (concept_slug,))
+                c_row = cursor.fetchone()
+                concept_title = c_row[0] if c_row else (concept_slug.replace("-", " ").title() if concept_slug else "Concept")
+
+                if c_row:
+                    try:
+                        c_citations = json.loads(c_row[1]) if c_row[1] else []
+                    except Exception:
+                        c_citations = []
+                    if citation and citation not in c_citations:
+                        c_citations.append(citation)
+                        cursor.execute(
+                            "UPDATE curriculum_concepts SET citations_json = ? WHERE slug = ?",
+                            (json.dumps(c_citations), concept_slug),
+                        )
+
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO connected_signals (
+                        id, proposal_id, source_url, source_title, source_domain,
+                        concept_slug, concept_title, edge_type, excerpt,
+                        reviewed_citation, rationale, connected_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p.id, p.id, source_url, source_title, source_domain,
+                        concept_slug or "", concept_title, edge_type, excerpt,
+                        citation, rationale, connected_at,
+                    ),
+                )
+        conn.commit()
+    except Exception:
+        pass
+

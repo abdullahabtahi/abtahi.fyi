@@ -22,10 +22,16 @@ def initialize_projection() -> None:
     from app.core.db import init_sqlite_db
     from app.core.network import network_cache
     from app.core.public_loader import PublicContentLoader
+    from app.core.firestore import hydrate_sqlite_from_firestore
 
     conn = init_sqlite_db()
     try:
+        uid = os.getenv("INGESTION_OWNER_UID", "")
+        if uid:
+            hydrate_sqlite_from_firestore(uid, conn)
+
         network_cache.load_curriculum_from_db(conn)
+        network_cache.load_connected_signals_from_db(conn)
         loader = PublicContentLoader()
         items = loader.load_all_items()
         network_cache.load_from_items(items)
