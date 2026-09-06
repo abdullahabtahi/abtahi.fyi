@@ -21,5 +21,18 @@ def test_validate_outbound_url_rfc1918():
     assert validate_outbound_url("http://172.16.0.5/api") is False
     assert validate_outbound_url("http://192.168.1.100/feed") is False
 
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://100.64.0.1/feed",
+        "http://0.0.0.0/feed",
+        "http://224.0.0.1/feed",
+        "http://[::1]/feed",
+    ],
+)
+def test_validate_outbound_url_rejects_non_public_address_ranges(url: str):
+    assert validate_outbound_url(url) is False
+
 def test_validate_outbound_url_invalid_hostname():
     assert validate_outbound_url("https://this-domain-does-not-exist-123456789.com") is False

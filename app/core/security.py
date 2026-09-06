@@ -1,4 +1,5 @@
 import os
+import ipaddress
 import socket
 from urllib.parse import urlparse
 from google.cloud import secretmanager
@@ -25,7 +26,7 @@ def get_secret(secret_id: str, default: str | None = None) -> str:
         raise RuntimeError(f"Failed to access secret {secret_id} from Secret Manager: {e}")
 
 def validate_outbound_url(url: str) -> bool:
-    """SSRF Guardrail: Rejects loopback, private RFC 1918, and Cloud Metadata IPs"""
+    """Returns whether a URL resolves exclusively to public HTTP(S) addresses."""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         return False
@@ -34,13 +35,12 @@ def validate_outbound_url(url: str) -> bool:
         return False
 
     try:
-        ip = socket.gethostbyname(hostname)
+        addresses = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
     except socket.gaierror:
         return False
-        
-    # Block loopback, link-local (GCP metadata), and private ranges
-    if ip.startswith(("127.", "169.254.", "10.", "192.168.")) or (
-        ip.startswith("172.") and 16 <= int(ip.split(".")[1]) <= 31
-    ):
-        return False
-    return True
+
+    def is_public(address: tuple) -> bool:
+        ip = ipaddress.ip_address(address[4][0])
+        return ip.is_global and not ip.is_multicast
+
+    return bool(addresses) and all(is_public(address) for address in addresses)
