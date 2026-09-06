@@ -7,13 +7,15 @@ def parse_content(markdown_text: str) -> tuple[dict, str]:
     metadata, body = frontmatter.parse(markdown_text)
     return metadata, body
 
+# Cache the MarkdownIt instance at module level to avoid costly instantiations
+_md_instance = (
+    MarkdownIt('commonmark', {'html': True})
+    .use(dollarmath_plugin)
+    .use(gfm_plugin)
+)
+
 def render_html(markdown_body: str) -> str:
-    md = (
-        MarkdownIt('commonmark', {'html': True})
-        .use(dollarmath_plugin)
-        .use(gfm_plugin)
-    )
-    return md.render(markdown_body)
+    return _md_instance.render(markdown_body)
 
 from pathlib import Path
 from app.domain.models import ContentItem
