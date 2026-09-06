@@ -54,6 +54,10 @@ class Settings(BaseSettings):
             self.FIREBASE_AUTH_DOMAIN = f"{self.GCP_PROJECT_ID}.firebaseapp.com"
         if not self.FIREBASE_STORAGE_BUCKET and self.GCP_PROJECT_ID:
             self.FIREBASE_STORAGE_BUCKET = f"{self.GCP_PROJECT_ID}.firebasestorage.app"
+        if not self.FIREBASE_API_KEY and self.GCP_PROJECT_ID == "spatial-cat-489006-a4":
+            self.FIREBASE_API_KEY = "AIzaSyAZgvaDjk3S66E2ZRXoeGXJWv9zeJB5Rcg"
+        if not self.FIREBASE_APP_ID and self.GCP_PROJECT_ID == "spatial-cat-489006-a4":
+            self.FIREBASE_APP_ID = "1:903682941870:web:5dbd7f74136f2e129d5e3f"
         if not self.ALLOWED_LEARNER_EMAIL and self.ALLOWLISTED_EMAIL:
             self.ALLOWED_LEARNER_EMAIL = self.ALLOWLISTED_EMAIL
         return self
