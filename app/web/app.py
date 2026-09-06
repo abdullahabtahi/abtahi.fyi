@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from app.auth.dependencies import auth_router
 from app.api.routes_study import study_router
 from app.routers.syndication import router as syndication_router
+from app.routers.api_public import router as api_public_router
 from app.routers.admin import router as admin_router
 from app.core.readiness import ReadinessState
 from app.settings import Settings
@@ -23,15 +24,16 @@ def initialize_projection() -> None:
     from app.core.public_loader import PublicContentLoader
 
     conn = init_sqlite_db()
-    conn.close()
-    loader = PublicContentLoader()
-    items = loader.load_all_items()
-    edges = [
-        (item.id, out_id, {"type": "reference"})
-        for item in items
-        for out_id in getattr(item, "outgoing_edges", [])
-    ]
-    network_cache.initialize(edges)
+    try:
+        # Check if pre-computed snapshot exists in SQLite for <1ms cold boot
+        network_cache.load_snapshot_from_db(conn)
+        loader = PublicContentLoader()
+        items = loader.load_all_items()
+        network_cache.load_from_items(items)
+        network_cache.save_snapshot_to_db(conn)
+        loader.index_fts(conn, items)
+    finally:
+        conn.close()
 
 
 @asynccontextmanager
@@ -68,6 +70,7 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(study_router)
     app.include_router(syndication_router)
+    app.include_router(api_public_router)
     app.include_router(admin_router)
 
     @app.get("/healthz")

@@ -1,27 +1,140 @@
 {% extends "base.html" %}
 
-{% block title %}{{ item.title }} - abtahi.fyi{% endblock %}
+{% block title %}{{ item.title }} — abtahi.fyi{% endblock %}
+{% block meta_description %}{{ item.summary or item.title }}{% endblock %}
 
 {% block content %}
-<article class="max-w-prose mx-auto">
-    <h1 class="text-4xl mb-4">{{ item.title }}</h1>
-    
-    <div class="flex items-center gap-3 text-sm text-stone-500 font-mono mb-12 pb-8 border-b border-stone-800">
-        <time datetime="{{ item.published_at.isoformat() }}">{{ item.published_at.strftime('%B %d, %Y') }}</time>
-        <span>&middot;</span>
-        <span class="tabular-nums">{{ item.connections }} connections</span>
+<article class="max-w-[640px] mx-auto py-12 px-4 sm:px-0">
+
+  <!-- Temporal Invalidation Banner if Superseded -->
+  {% if item.superseded_by %}
+  <div class="superseded-banner mb-8 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-lg text-amber-900 dark:text-amber-200 text-sm">
+    <div class="flex items-center gap-2 font-medium">
+      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <span>Temporal Invalidation Warning</span>
     </div>
-    
-    <div class="prose prose-stone prose-invert max-w-none text-stone-300 leading-relaxed font-serif">
-        {{ item.content_html | safe }}
+    <p class="mt-1 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+      This entry has been superseded by a newer conceptual formulation:
+      <a href="/i/{{ item.superseded_by }}" class="underline font-semibold hover:text-amber-950 dark:hover:text-amber-100">
+        {{ item.superseded_by }}
+      </a>.
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Type & Domain Header -->
+  <div class="flex items-center gap-2 mb-4 text-xs font-mono">
+    <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase
+      {% if item.item_type == 'riff' %}bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60
+      {% elif item.item_type == 'link' %}bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60
+      {% else %}bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60{% endif %}">
+      {{ item.item_type }}
+    </span>
+
+    {% if item.domain %}
+    <a href="{{ item.canonical_url }}" target="_blank" rel="noopener noreferrer" class="text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors inline-flex items-center gap-1">
+      <span>{{ item.domain }}</span>
+      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+    {% endif %}
+
+    <time datetime="{{ item.published_at.isoformat() }}" class="ml-auto text-stone-400 dark:text-stone-500">
+      {{ item.published_at.strftime('%B %d, %Y') }}
+    </time>
+  </div>
+
+  <!-- Title -->
+  <h1 class="text-3xl sm:text-4xl font-serif font-medium text-stone-900 dark:text-stone-100 leading-tight mb-8">
+    {{ item.title }}
+  </h1>
+
+  <!-- Excerpt / Summary Quote -->
+  {% if item.summary %}
+  <blockquote class="border-l-2 border-stone-300 dark:border-stone-700 pl-5 py-1 mb-8 text-base text-stone-600 dark:text-stone-300 italic font-serif leading-relaxed">
+    {{ item.summary }}
+  </blockquote>
+  {% endif %}
+
+  <!-- Commentary (Mandatory for links) -->
+  {% if item.commentary %}
+  <div class="mb-8 p-5 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
+    <h2 class="text-xs font-mono uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-2">Analytical Commentary</h2>
+    <div class="text-stone-800 dark:text-stone-200 font-serif leading-relaxed text-sm">
+      {{ item.commentary }}
     </div>
-    
-    {% if item.tags %}
-    <div class="flex gap-2 flex-wrap mt-16 pt-8 border-t border-stone-800">
-        {% for tag in item.tags %}
-        <span class="px-2 py-1 bg-stone-900 border border-stone-800 rounded text-xs font-mono text-stone-400">#{{ tag }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Body Content -->
+  <div class="prose prose-stone dark:prose-invert max-w-none text-base font-serif leading-relaxed text-stone-800 dark:text-stone-200">
+    {{ item.content_html | safe }}
+  </div>
+
+  <!-- Tags -->
+  {% if item.tags %}
+  <div class="flex flex-wrap gap-2 mt-12 pt-6 border-t border-stone-200 dark:border-stone-800">
+    {% for tag in item.tags %}
+    <span class="text-xs font-mono text-stone-400 dark:text-stone-500">#{{ tag }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Inspectable Knowledge Connections (Incoming / Outgoing) -->
+  <section class="relationship-group connection-group mt-16 pt-8 border-t border-stone-200 dark:border-stone-800">
+    <h2 class="text-xs font-mono uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-6">
+      Knowledge Connections
+    </h2>
+
+    {% if relationships and relationships.outgoing %}
+    <div class="mb-8">
+      <h3 class="text-xs font-mono text-stone-500 uppercase tracking-wider mb-3">Outgoing References ({{ relationships.outgoing|length }})</h3>
+      <div class="space-y-3">
+        {% for edge in relationships.outgoing %}
+        <div class="p-3.5 rounded-lg border border-stone-200 dark:border-stone-800/80 bg-stone-50 dark:bg-stone-900/40">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <a href="/i/{{ edge.target_id }}" class="font-serif font-medium text-stone-900 dark:text-stone-100 hover:underline">
+              {{ edge.target_title or edge.target_id }}
+            </a>
+            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded uppercase border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400">
+              {{ edge.edge_type }}
+            </span>
+          </div>
+          {% if edge.reason %}
+          <p class="text-xs font-serif text-stone-600 dark:text-stone-400 leading-relaxed">{{ edge.reason }}</p>
+          {% endif %}
+        </div>
         {% endfor %}
+      </div>
     </div>
     {% endif %}
+
+    {% if relationships and relationships.incoming %}
+    <div class="mb-8">
+      <h3 class="text-xs font-mono text-stone-500 uppercase tracking-wider mb-3">Incoming Backlinks ({{ relationships.incoming|length }})</h3>
+      <div class="space-y-3">
+        {% for edge in relationships.incoming %}
+        <div class="p-3.5 rounded-lg border border-stone-200 dark:border-stone-800/80 bg-stone-50 dark:bg-stone-900/40">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <a href="/i/{{ edge.source_id }}" class="font-serif font-medium text-stone-900 dark:text-stone-100 hover:underline">
+              {{ edge.source_title or edge.source_id }}
+            </a>
+            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded uppercase border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400">
+              {{ edge.edge_type }}
+            </span>
+          </div>
+          {% if edge.reason %}
+          <p class="text-xs font-serif text-stone-600 dark:text-stone-400 leading-relaxed">{{ edge.reason }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not relationships or (not relationships.outgoing and not relationships.incoming) %}
+    <p class="text-xs font-mono text-stone-400 dark:text-stone-500 italic">No incoming or outgoing relationships recorded yet.</p>
+    {% endif %}
+  </section>
+
 </article>
 {% endblock %}

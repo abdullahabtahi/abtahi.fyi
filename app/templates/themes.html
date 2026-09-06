@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Themes & Clusters — abtahi.fyi{% endblock %}
+{% block meta_description %}Emergent thematic clusters discovered via Louvain community modularity analysis.{% endblock %}
+
+{% block content %}
+<div class="max-w-[640px] mx-auto py-12 px-4 sm:px-0">
+
+  <!-- Header -->
+  <header class="mb-12 pb-6 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Thematic Clusters
+    </h1>
+    <p class="text-sm font-serif text-stone-600 dark:text-stone-400 leading-relaxed">
+      Modular communities discovered through Louvain clustering. Rather than rigid taxonomy, these clusters reflect natural densities in conceptual association.
+    </p>
+  </header>
+
+  <!-- Communities List -->
+  <div class="space-y-8">
+    {% for theme in themes %}
+    <article class="theme-card p-6 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/40 shadow-sm">
+      <div class="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-stone-100 dark:border-stone-800">
+        <h2 class="text-base font-serif font-medium text-stone-900 dark:text-stone-100">
+          Cluster {{ theme.community_id + 1 }}
+        </h2>
+        <span class="text-xs font-mono text-stone-400 dark:text-stone-500 tabular-nums">
+          {{ theme.members|length }} items
+        </span>
+      </div>
+
+      <ul class="space-y-3">
+        {% for member in theme.members %}
+        <li class="flex items-baseline justify-between gap-3 text-sm">
+          <a href="/i/{{ member.id }}" class="font-serif text-stone-800 dark:text-stone-200 hover:underline truncate">
+            {{ member.title }}
+          </a>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded uppercase border border-stone-200 dark:border-stone-800 text-stone-500 shrink-0">
+            {{ member.item_type }}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% else %}
+    <div class="text-center py-20 text-stone-400 dark:text-stone-500 font-mono text-sm italic">
+      No community clusters discovered yet.
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

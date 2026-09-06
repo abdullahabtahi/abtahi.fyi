@@ -36,5 +36,27 @@ def init_sqlite_db(db_path: str = "data/graph.db") -> sqlite3.Connection:
           embedding float[768] distance_metric=cosine
         );
     """)
+
+    # Full-Text Search Virtual Table (FTS5) for keyword queries and fallback
+    conn.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS public_items_fts USING fts5(
+            id UNINDEXED,
+            title,
+            summary,
+            commentary,
+            content,
+            tags,
+            tokenize = 'porter unicode61'
+        );
+    """)
+
+    # Persistent Graph Snapshot Table for Sub-Millisecond Cold Boot
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS public_graph_snapshot (
+            snapshot_key TEXT PRIMARY KEY,
+            snapshot_json TEXT NOT NULL,
+            generated_at TEXT NOT NULL
+        );
+    """)
     
     return conn

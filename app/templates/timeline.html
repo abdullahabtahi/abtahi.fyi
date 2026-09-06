@@ -1,82 +1,99 @@
 {% extends "base.html" %}
 
 {% block title %}Timeline — abtahi.fyi{% endblock %}
-{% block meta_description %}A private study knowledge graph connecting trusted sources to WorldQuant University concepts through cited, evidence-backed proposals.{% endblock %}
+{% block meta_description %}A calm, single-column chronological reading stream of notes, links, and intellectual synthesis by Abdullah Abtahi.{% endblock %}
 
 {% block content %}
-<div class="py-12">
+<div class="max-w-[640px] mx-auto py-12 px-4 sm:px-0">
 
-  <!-- Page heading -->
-  <div class="mb-10 pb-8 border-b border-stone-200">
-    <h1 class="text-3xl font-['Bellefair'] text-stone-900 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
-      Knowledge Timeline
+  <!-- Stream Header -->
+  <header class="mb-12 pb-6 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Context Stream
     </h1>
-    <p class="text-sm font-mono text-stone-400 tabular-nums">
-      Evidence-backed connections to WorldQuant University Module 1
+    <p class="text-sm font-serif text-stone-600 dark:text-stone-400 leading-relaxed">
+      A chronological stream of original arguments, curated papers with analytical commentary, and emergent network synthesis.
     </p>
-  </div>
+  </header>
 
-  <!-- Masonry-ish grid of concept cards -->
-  <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5 space-y-5">
-    {% for item in items %}
-    <article class="break-inside-avoid p-5 rounded-xl border border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50 transition-all duration-150 group relative shadow-sm"
-             id="concept-{{ item.id }}">
-
-      <!-- Domain badge -->
-      {% if item.cluster %}
-      <div class="mb-3">
-        <span class="text-[11px] font-mono px-2 py-0.5 rounded border tabular-nums
-          {% if item.cluster == 'AI' %}text-amber-700 bg-amber-50 border-amber-200
-          {% elif item.cluster == 'Cloud' %}text-sky-700 bg-sky-50 border-sky-200
-          {% elif item.cluster == 'Complex Systems' %}text-emerald-700 bg-emerald-50 border-emerald-200
-          {% else %}text-purple-700 bg-purple-50 border-purple-200{% endif %}">
-          {{ item.cluster }}
-        </span>
-      </div>
-      {% endif %}
-
-      <!-- Title -->
-      <h2 class="text-base font-medium text-stone-900 group-hover:text-pink-600 transition-colors leading-snug mb-2">
-        <a href="{{ url_for('get_permalink', id=item.id) }}"
-           class="no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-300 rounded">
-          <span class="absolute inset-0" aria-hidden="true"></span>
-          {{ item.title }}
-        </a>
+  <!-- Chronological Day Groups -->
+  <div class="space-y-12">
+    {% for day in days %}
+    <section class="day-group">
+      <!-- Day Header -->
+      <h2 class="day-header text-xs font-mono uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-6 pb-2 border-b border-stone-200 dark:border-stone-800">
+        <time datetime="{{ day.date_iso }}">{{ day.date_formatted }}</time>
       </h2>
 
-      <!-- Summary -->
-      {% if item.summary %}
-      <p class="text-sm text-stone-600 leading-relaxed line-clamp-3 mb-4">
-        {{ item.summary }}
-      </p>
-      {% endif %}
+      <!-- Items in this day -->
+      <div class="space-y-10">
+        {% for item in day.entries %}
+        <article class="timeline-item group relative" id="{{ item.id }}">
 
-      <!-- Tags -->
-      {% if item.tags %}
-      <div class="flex flex-wrap gap-1.5 mb-4">
-        {% for tag in item.tags %}
-        <span class="px-1.5 py-0.5 bg-stone-100 rounded text-xs font-mono text-stone-500">#{{ tag }}</span>
+          <!-- Metadata row: Type badge, domain, connections -->
+          <div class="flex items-center gap-2 mb-2 text-xs font-mono">
+            <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase
+              {% if item.item_type == 'riff' %}bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60
+              {% elif item.item_type == 'link' %}bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60
+              {% else %}bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60{% endif %}">
+              {{ item.item_type }}
+            </span>
+
+            {% if item.domain %}
+            <a href="{{ item.canonical_url }}" target="_blank" rel="noopener noreferrer" class="text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors inline-flex items-center gap-1">
+              <span>{{ item.domain }}</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+            {% endif %}
+
+            {% if item.edges %}
+            <span class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 tabular-nums">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              {{ item.edges|length }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Title -->
+          <h3 class="text-xl font-serif font-medium text-stone-900 dark:text-stone-100 hover:text-stone-600 dark:hover:text-stone-300 transition-colors leading-snug mb-2">
+            <a href="/i/{{ item.id }}" class="no-underline">
+              {{ item.title }}
+            </a>
+          </h3>
+
+          <!-- Excerpt quote if link or note premise -->
+          {% if item.summary %}
+          <blockquote class="border-l-2 border-stone-300 dark:border-stone-700 pl-4 py-1 my-3 text-sm text-stone-600 dark:text-stone-400 italic font-serif">
+            {{ item.summary }}
+          </blockquote>
+          {% endif %}
+
+          <!-- Commentary / Rendered HTML -->
+          {% if item.commentary %}
+          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-2">
+            {{ item.commentary }}
+          </div>
+          {% elif item.content_html %}
+          <div class="prose prose-stone dark:prose-invert max-w-none text-sm font-serif leading-relaxed my-2">
+            {{ item.content_html | safe }}
+          </div>
+          {% endif %}
+
+          <!-- Tags -->
+          {% if item.tags %}
+          <div class="flex flex-wrap gap-2 mt-3">
+            {% for tag in item.tags %}
+            <span class="text-xs font-mono text-stone-400 dark:text-stone-500">#{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        </article>
         {% endfor %}
       </div>
-      {% endif %}
-
-      <!-- Footer metadata -->
-      <div class="flex items-center justify-between text-xs font-mono text-stone-400 pt-3 border-t border-stone-100 tabular-nums">
-        <time datetime="{{ item.published_at.isoformat() }}" class="text-stone-400">
-          {{ item.published_at.strftime('%b %d, %Y') }}
-        </time>
-        {% if item.connections %}
-        <span class="flex items-center gap-1">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 8L22 12L18 16"/><path d="M2 12H22"/>
-          </svg>
-          {{ item.connections }}
-        </span>
-        {% endif %}
-      </div>
-    </article>
+    </section>
     {% else %}
-    <div class="col-span-full text-center py-24 text-stone-400">
+    <div class="text-center py-24 text-stone-400">
       <p class="font-mono text-sm italic">No public context available yet.</p>
     </div>
     {% endfor %}

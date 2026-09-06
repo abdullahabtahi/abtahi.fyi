@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Intellectual Tensions — abtahi.fyi{% endblock %}
+{% block meta_description %}Active intellectual contradictions, challenged paradigms, and methodological tensions within the knowledge graph.{% endblock %}
+
+{% block content %}
+<div class="max-w-[640px] mx-auto py-12 px-4 sm:px-0">
+
+  <!-- Header -->
+  <header class="mb-12 pb-6 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Intellectual Tensions
+    </h1>
+    <p class="text-sm font-serif text-stone-600 dark:text-stone-400 leading-relaxed">
+      Where ideas collide. Rather than smoothing over contradictions, this index documents explicit challenges, opposing hypotheses, and unresolved dialectic tensions.
+    </p>
+  </header>
+
+  <!-- Tension Cards List -->
+  <div class="space-y-10">
+    {% for tension in tensions %}
+    <article class="tension-card p-6 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/40 shadow-sm relative">
+
+      <!-- Dialectic Header -->
+      <div class="flex items-center gap-2 text-xs font-mono mb-4 text-stone-400 dark:text-stone-500">
+        <span class="px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+          challenges
+        </span>
+        {% if tension.triangular_loop %}
+        <span class="px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+          triangular tension
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Node Conflict Pair -->
+      <div class="space-y-2 mb-4">
+        <div class="flex items-baseline gap-2">
+          <span class="text-xs font-mono text-stone-400 dark:text-stone-500 shrink-0">Source:</span>
+          <a href="/i/{{ tension.source_id }}" class="font-serif font-medium text-stone-900 dark:text-stone-100 hover:underline">
+            {{ tension.source_title }}
+          </a>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-xs font-mono text-rose-500 dark:text-rose-400 shrink-0">&ne; Opposes:</span>
+          <a href="/i/{{ tension.target_id }}" class="font-serif font-medium text-stone-900 dark:text-stone-100 hover:underline">
+            {{ tension.target_title }}
+          </a>
+        </div>
+      </div>
+
+      <!-- Challenge Quote if available -->
+      {% if tension.challenge_quote %}
+      <blockquote class="border-l-2 border-rose-300 dark:border-rose-700/60 pl-4 py-1 my-3 text-xs italic font-serif text-stone-600 dark:text-stone-300">
+        {{ tension.challenge_quote }}
+      </blockquote>
+      {% endif %}
+
+      <!-- Analytical Rationale -->
+      <div class="mt-3 pt-3 border-t border-stone-100 dark:border-stone-800 text-xs font-serif text-stone-700 dark:text-stone-300 leading-relaxed">
+        <p class="font-mono text-[10px] uppercase text-stone-400 dark:text-stone-500 mb-1">Analytical Rationale</p>
+        <p>{{ tension.reason }}</p>
+      </div>
+
+    </article>
+    {% else %}
+    <div class="text-center py-20 text-stone-400 dark:text-stone-500 font-mono text-sm italic">
+      No explicit intellectual tensions detected in the active graph.
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

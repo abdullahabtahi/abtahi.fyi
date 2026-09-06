@@ -64,7 +64,7 @@
                     </svg>
                 </a>
                 <button id="theme-toggle"
-                    class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 transition-colors focus:outline-none"
+                    class="p-2 rounded-lg text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
                     aria-label="Toggle Dark Mode">
                     <svg id="theme-toggle-dark-icon" class="hidden w-4 h-4" xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -100,11 +100,15 @@
         <div
             class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs text-stone-400 font-mono">
             <div class="tabular-nums">&copy; 2026 abtahi.fyi</div>
-            <div class="flex items-center gap-5">
+            <div class="flex items-center gap-5 flex-wrap">
                 <a href="/about"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">About</a>
                 <a href="/feed.json"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">JSON Feed</a>
+                <a href="/feed.xml"
+                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Atom</a>
+                <a href="/llms.txt"
+                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">llms.txt</a>
                 <a href="/tensions"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Tensions</a>
                 <a href="/themes"

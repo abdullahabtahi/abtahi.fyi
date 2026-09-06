@@ -15,34 +15,113 @@ loader = PublicContentLoader()
 @router.get("/", response_class=HTMLResponse)
 async def get_timeline(request: Request):
     items = loader.load_all_items()
+    network_cache.load_from_items(items)
+
+    # Group items by day for calm reading stream
+    days_dict: dict[str, list] = {}
+    for item in items:
+        date_key = item.published_at.strftime("%Y-%m-%d")
+        days_dict.setdefault(date_key, []).append(item)
+
+    days = []
+    for date_key, day_items in days_dict.items():
+        date_obj = day_items[0].published_at
+        days.append({
+            "date_iso": date_key,
+            "date_formatted": date_obj.strftime("%B %d, %Y"),
+            "entries": day_items,
+        })
+
     return templates.TemplateResponse(
-        request=request, name="timeline.html", context={"items": items}
+        request=request, name="timeline.html", context={"days": days, "items": items}
     )
 
 @router.get("/i/{id}", response_class=HTMLResponse, name="get_permalink")
 async def get_permalink(request: Request, id: str):
     items = loader.load_all_items()
+    network_cache.load_from_items(items)
     item = next((i for i in items if i.id == id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
         
+    relationships = network_cache.get_item_edges(item.id)
     return templates.TemplateResponse(
-        request=request, name="permalink.html", context={"item": item}
+        request=request, name="permalink.html", context={"item": item, "relationships": relationships}
     )
 
 @router.get("/llms.txt", response_class=PlainTextResponse)
 async def get_llms_txt():
-    content = """# abtahi.fyi - Public Context
-I am an AI assistant interacting with the public syndication plane of this knowledge graph.
-- OpenAPI Schema: `/openapi.json`
-- JSON Feed: `/feed.json`
-- Semantic Search: `/api/semantic/{q}`
+    content = """# abtahi.fyi — Context Syndication Plane
+
+> A calm, agent-native knowledge graph by Abdullah Abtahi covering autonomous systems, complex networks, hardware architectures, and AI cognition.
+
+## Author Context
+Abdullah Abtahi is an engineer and researcher building autonomous reasoning systems, hardware-aware execution pipelines, and public knowledge synthesis graphs.
+
+## Item Types
+- **riff**: Original thinking, reaction, distinction, or concise architectural argument (no external URL).
+- **link**: Curated external paper or source paired with analytical commentary on why it matters (never a naked URL).
+- **essay**: Deep dive conceptual synthesis.
+
+## Agent Feeds & Schemas
+- JSON Feed 1.1: `https://abtahi.fyi/feed.json`
+- Atom 1.0 XML: `https://abtahi.fyi/feed.xml`
+- OpenAPI 3.1 Spec: `https://abtahi.fyi/openapi.json`
+
+## REST Query API (`/api/fyi/q/...`)
+- Keyword Search: `GET /api/fyi/q/search/{term}` or `GET /api/fyi/q/search?q={term}`
+- Semantic Search: `GET /api/fyi/q/semantic/{query}` or `GET /api/fyi/q/semantic?q={query}`
+- Knowledge Connections: `GET /api/fyi/q/edges/{itemId}` or `GET /api/fyi/q/edges?itemId={itemId}`
+- All Items: `GET /api/fyi/q/items?since={ISO}&type={type}&limit={n}&offset={n}`
+- Item Detail: `GET /api/fyi/q/items/{itemId}`
+- Graph Intelligence Summary: `GET /api/fyi/q/summary`
 """
     return PlainTextResponse(content=content, media_type="text/markdown")
+
+@router.get("/feed.xml")
+async def get_feed_xml(request: Request):
+    items = loader.load_all_items()
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    entries_xml = []
+    for item in items:
+        tags_xml = "".join([f'<category term="{tag}"/>' for tag in item.tags])
+        canonical = f'<link rel="related" href="{item.canonical_url}"/>' if item.canonical_url else ''
+        summary_xml = f'<summary><![CDATA[{item.summary}]]></summary>' if item.summary else ''
+        entries_xml.append(
+            f"""  <entry>
+    <title>{item.title}</title>
+    <link href="https://abtahi.fyi/i/{item.id}"/>
+    {canonical}
+    <id>https://abtahi.fyi/i/{item.id}</id>
+    <updated>{item.published_at.isoformat()}</updated>
+    {summary_xml}
+    <content type="html"><![CDATA[{item.content_html}]]></content>
+    {tags_xml}
+  </entry>"""
+        )
+
+    xml_content = f"""<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>abtahi.fyi Context Syndication</title>
+  <subtitle>Original notes, curated links, and emergent network synthesis by Abdullah Abtahi</subtitle>
+  <link href="https://abtahi.fyi/feed.xml" rel="self"/>
+  <link href="https://abtahi.fyi/"/>
+  <updated>{now_iso}</updated>
+  <id>https://abtahi.fyi/</id>
+  <author>
+    <name>Abdullah Abtahi</name>
+    <uri>https://abtahi.fyi/</uri>
+  </author>
+{chr(10).join(entries_xml)}
+</feed>"""
+    return Response(content=xml_content, media_type="application/atom+xml")
 
 @router.get("/feed.json", response_model=JSONFeed, response_model_by_alias=True)
 async def get_feed_json(request: Request):
     items = loader.load_all_items()
+    network_cache.load_from_items(items)
     feed_items = []
     
     pr_scores = network_cache.get_pagerank()
@@ -62,13 +141,17 @@ async def get_feed_json(request: Request):
                 id=item.id,
                 url=str(request.url_for("get_permalink", id=item.id)) if "get_permalink" in [getattr(r, "name", None) for r in request.app.routes] else f"https://abtahi.fyi/i/{item.id}",
                 title=item.title,
+                summary=item.summary,
                 content_html=item.content_html,
                 date_published=item.published_at.isoformat() + "Z" if item.published_at.tzinfo is None else item.published_at.isoformat(),
                 _fyi=FyiExtensions(
-                    tags=item.tags,
+                    item_type=item.item_type.value,
+                    canonical_url=item.canonical_url,
+                    tags=list(item.tags),
                     pagerank_score=pr_scores.get(item.id),
                     betweenness_score=bw_scores.get(item.id),
-                    community_id=group
+                    community_id=group,
+                    edges_count=len(item.edges),
                 )
             )
         )
@@ -121,8 +204,9 @@ async def get_graph(request: Request):
 
 @router.get("/connected", response_class=HTMLResponse)
 async def get_connected(request: Request):
-    pr_scores = network_cache.get_pagerank()
     items = loader.load_all_items()
+    network_cache.load_from_items(items)
+    pr_scores = network_cache.get_pagerank()
     
     view_items = []
     for item in items:
@@ -130,70 +214,52 @@ async def get_connected(request: Request):
         view_items.append({
             "id": item.id,
             "title": item.title,
+            "summary": item.summary,
             "metric_value": f"{score:.4f}"
         })
         
     view_items.sort(key=lambda x: float(x["metric_value"]), reverse=True)
     
     return templates.TemplateResponse(
-        request=request, name="metrics_view.html", context={
-            "title": "Most Connected",
-            "description": "Content ranked by PageRank centrality.",
-            "metric_label": "PageRank",
+        request=request, name="connected.html", context={
             "items": view_items
         }
     )
 
 @router.get("/tensions", response_class=HTMLResponse)
 async def get_tensions(request: Request):
-    bw_scores = network_cache.get_betweenness()
     items = loader.load_all_items()
-    
-    view_items = []
-    for item in items:
-        score = bw_scores.get(item.id, 0.0)
-        if score > 0:
-            view_items.append({
-                "id": item.id,
-                "title": item.title,
-                "metric_value": f"{score:.4f}"
-            })
-            
-    view_items.sort(key=lambda x: float(x["metric_value"]), reverse=True)
+    network_cache.load_from_items(items)
+    tensions = network_cache.extract_intellectual_tensions()
     
     return templates.TemplateResponse(
-        request=request, name="metrics_view.html", context={
-            "title": "Structural Tensions",
-            "description": "Content ranked by Betweenness centrality, acting as bridges between disparate themes.",
-            "metric_label": "Betweenness",
-            "items": view_items
+        request=request, name="tensions.html", context={
+            "tensions": tensions
         }
     )
 
 @router.get("/themes", response_class=HTMLResponse)
 async def get_themes(request: Request):
-    communities = network_cache.get_communities()
     items = loader.load_all_items()
-    item_dict = {item.id: item.title for item in items}
+    network_cache.load_from_items(items)
+    communities = network_cache.get_communities()
+    item_map = {item.id: item for item in items}
     
-    view_items = []
+    themes_data = []
     for i, comm in enumerate(communities):
+        comm_members = []
         for node in comm:
-            if node in item_dict:
-                view_items.append({
-                    "id": node,
-                    "title": item_dict[node],
-                    "metric_value": f"Theme {i+1}"
-                })
-                
-    view_items.sort(key=lambda x: x["metric_value"])
-    
+            if node in item_map:
+                comm_members.append(item_map[node])
+        if comm_members:
+            themes_data.append({
+                "community_id": i,
+                "members": comm_members,
+            })
+            
     return templates.TemplateResponse(
-        request=request, name="metrics_view.html", context={
-            "title": "Emergent Themes",
-            "description": "Content grouped by Louvain community detection.",
-            "metric_label": "Community",
-            "items": view_items
+        request=request, name="themes.html", context={
+            "themes": themes_data
         }
     )
 

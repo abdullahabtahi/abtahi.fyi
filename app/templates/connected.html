@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Gravity Centers — abtahi.fyi{% endblock %}
+{% block meta_description %}Content ranked by PageRank centrality and topological authority within the knowledge network.{% endblock %}
+
+{% block content %}
+<div class="max-w-[640px] mx-auto py-12 px-4 sm:px-0">
+
+  <!-- Header -->
+  <header class="mb-12 pb-6 border-b border-stone-200 dark:border-stone-800">
+    <h1 class="text-3xl font-['Bellefair'] text-stone-900 dark:text-stone-100 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
+      Gravity Centers
+    </h1>
+    <p class="text-sm font-serif text-stone-600 dark:text-stone-400 leading-relaxed">
+      Topological authority hubs across the graph, ranked by recursive citation influence (PageRank). These nodes act as foundational anchors for surrounding arguments.
+    </p>
+  </header>
+
+  <!-- Ranked Table List -->
+  <div class="space-y-4">
+    {% for item in items %}
+    <div class="gravity-center p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/40 flex items-center justify-between gap-4">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-mono text-stone-400 dark:text-stone-500">#{{ loop.index }}</span>
+          <a href="/i/{{ item.id }}" class="font-serif font-medium text-stone-900 dark:text-stone-100 hover:underline truncate">
+            {{ item.title }}
+          </a>
+        </div>
+        <p class="text-xs font-serif text-stone-500 dark:text-stone-400 line-clamp-1">
+          {{ item.summary or item.title }}
+        </p>
+      </div>
+
+      <div class="text-right shrink-0">
+        <span class="font-mono text-xs text-stone-900 dark:text-stone-100 font-semibold tabular-nums">
+          {{ item.metric_value }}
+        </span>
+        <span class="block text-[10px] font-mono text-stone-400 dark:text-stone-500 uppercase">PageRank</span>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center py-20 text-stone-400 dark:text-stone-500 font-mono text-sm italic">
+      No graph nodes available.
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
