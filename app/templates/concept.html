@@ -1,24 +1,36 @@
-<div id="concept-page" class="p-6 max-w-[68ch] mx-auto">
-  <h1 class="text-2xl font-['Newsreader'] font-medium text-stone-900 mb-2 leading-tight" style="font-family:'Newsreader',serif;">
+{% extends "base.html" %}
+
+{% block title %}{{ concept.title }} - abtahi.fyi{% endblock %}
+
+{% block content %}
+<div id="concept-page" class="p-6 max-w-[68ch] mx-auto py-10">
+  <nav class="flex items-center gap-2 text-xs font-mono text-stone-500 mb-6">
+    <a href="/study" class="hover:underline text-stone-600 dark:text-stone-400">Study Map</a>
+    <span>/</span>
+    <span class="text-stone-900 dark:text-stone-200">{{ concept.module }}</span>
+  </nav>
+
+  <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2 leading-tight">
     {{ concept.title }}
   </h1>
-  <div class="text-xs font-mono text-stone-400 mb-8 tabular-nums">{{ concept.module }}</div>
+  <div class="text-xs font-mono text-stone-400 mb-8 tabular-nums">{{ concept.module }}{% if concept.module_title %}: {{ concept.module_title }}{% endif %}</div>
 
-  <div class="synthesis prose prose-stone text-stone-700 leading-relaxed">
+  <div class="synthesis prose prose-stone dark:prose-invert text-stone-700 dark:text-stone-300 leading-relaxed space-y-4 text-sm font-sans whitespace-pre-line">
     {{ concept.synthesis }}
   </div>
 
   {% if concept.citations %}
-  <details class="mt-8 rounded-lg border border-stone-200 bg-stone-50 overflow-hidden">
-    <summary class="flex items-center gap-2 px-4 py-3 text-xs font-mono text-stone-500 cursor-pointer hover:bg-stone-100 transition-colors select-none">
+  <details class="mt-8 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 overflow-hidden">
+    <summary class="flex items-center gap-2 px-4 py-3 text-xs font-mono text-stone-500 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors select-none">
       <svg class="w-3.5 h-3.5 text-pink-600 transition-transform open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       Inspect Citations ({{ concept.citations|length }})
     </summary>
-    <ul class="px-4 py-3 border-t border-stone-200 text-xs font-mono text-stone-600 space-y-2 bg-white list-none">
+    <ul class="px-4 py-3 border-t border-stone-200 dark:border-stone-800 text-xs font-mono text-stone-600 dark:text-stone-400 space-y-2 bg-white dark:bg-stone-950 list-none">
       {% for citation in concept.citations %}
-      <li class="text-stone-600">{{ citation }}</li>
+      <li class="text-stone-600 dark:text-stone-400">{{ citation }}</li>
       {% endfor %}
     </ul>
   </details>
   {% endif %}
 </div>
+{% endblock %}

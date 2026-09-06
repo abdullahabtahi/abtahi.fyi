@@ -5,7 +5,7 @@ from typing import Protocol
 from google.cloud.firestore_v1 import transactional
 
 from app.core.private_projection import PrivateProjectionEvent
-from app.domain.models import ConnectionProposal, ReviewResult
+from app.domain.models import ConnectionProposal, ReviewResult, ConceptNode, CourseModule
 from app.models.feed import ConsentDecision, SourceRevision
 from app.services.consent import ConsentUnavailable
 from app.services.ingestion import SourceMetadataStore
@@ -377,3 +377,88 @@ class FirestoreSourceMetadataStore(SourceMetadataStore):
             self._revisions(revision.uid).document(revision.id).create,
             revision.model_dump(mode="json"),
         )
+
+
+class FirestoreConceptStore:
+    """Stores curriculum concepts, modules, and ingested lecture notes scoped under the learner path."""
+
+    def __init__(self, db_client) -> None:
+        self.db = db_client
+
+    def _concepts(self, uid: str):
+        return self.db.collection("users").document(uid).collection("concepts")
+
+    def _modules(self, uid: str):
+        return self.db.collection("users").document(uid).collection("modules")
+
+    def _sources(self, uid: str):
+        return self.db.collection("users").document(uid).collection("sources")
+
+    async def save_concept(self, uid: str, concept: ConceptNode) -> None:
+        def write():
+            self._concepts(uid).document(concept.slug).set(
+                concept.model_dump(mode="json")
+            )
+
+        await asyncio.to_thread(write)
+
+    async def get_concept(self, uid: str, slug: str) -> ConceptNode | None:
+        def fetch():
+            doc = self._concepts(uid).document(slug).get()
+            if not doc.exists:
+                return None
+            return ConceptNode.model_validate(doc.to_dict())
+
+        return await asyncio.to_thread(fetch)
+
+    async def list_concepts(self, uid: str, module: str | None = None) -> list[ConceptNode]:
+        def fetch():
+            query = self._concepts(uid)
+            if module:
+                query = query.where("module", "==", module)
+            docs = query.stream()
+            results = []
+            for doc in docs:
+                data = doc.to_dict()
+                results.append(ConceptNode.model_validate(data))
+            results.sort(key=lambda c: (c.module, c.order, c.slug))
+            return results
+
+        return await asyncio.to_thread(fetch)
+
+    async def append_citation(self, uid: str, slug: str, citation_text: str) -> None:
+        def update():
+            doc_ref = self._concepts(uid).document(slug)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                citations = list(data.get("citations", []))
+                if citation_text not in citations:
+                    citations.append(citation_text)
+                    doc_ref.update({"citations": citations})
+
+        await asyncio.to_thread(update)
+
+    async def save_module(self, uid: str, module: CourseModule) -> None:
+        def write():
+            self._modules(uid).document(module.module_id).set(
+                module.model_dump(mode="json")
+            )
+
+        await asyncio.to_thread(write)
+
+    async def list_modules(self, uid: str) -> list[CourseModule]:
+        def fetch():
+            docs = self._modules(uid).stream()
+            modules = [CourseModule.model_validate(d.to_dict()) for d in docs]
+            modules.sort(key=lambda m: m.module_id)
+            return modules
+
+        return await asyncio.to_thread(fetch)
+
+    async def save_source(self, uid: str, source_id: str, data: dict) -> None:
+        def write():
+            self._sources(uid).document(source_id).set(data)
+
+        await asyncio.to_thread(write)
+

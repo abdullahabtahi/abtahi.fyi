@@ -179,6 +179,20 @@ class ConceptNode(BaseModel):
     module: NonEmptyText
     synthesis: NonEmptyText
     citations: list[NonEmptyText] = []
+    module_title: str | None = None
+    summary: str | None = None
+    prerequisites: list[str] = []
+    keywords: list[str] = []
+    order: int = 0
+    created_at: datetime | None = None
+
+class CourseModule(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    module_id: NonEmptyText
+    title: NonEmptyText
+    summary: str | None = None
+    concepts: list[ConceptNode] = []
 
 class EdgeReference(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)

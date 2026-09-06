@@ -1,19 +1,123 @@
 {% extends "base.html" %}
 
-{% block title %}Study Curriculum - abtahi.fyi{% endblock %}
+{% block title %}Study Map - abtahi.fyi{% endblock %}
 
 {% block content %}
-<div id="study-map" class="max-w-prose mx-auto">
-  <h1 class="text-3xl mb-8">Study Curriculum</h1>
-  
-  <div class="border-l border-stone-800 pl-6 space-y-6">
-    <!-- Render tree recursively in real app -->
-    <div class="module-node">
-      <h3 class="text-lg mb-2 text-stone-200">M1L1: Foundations</h3>
-      <ul class="list-disc ml-6 space-y-1 text-stone-400 marker:text-stone-700">
-        <li><a href="/concepts/system-architecture">System Architecture</a></li>
-      </ul>
+<div id="study-map" class="max-w-4xl mx-auto px-6 py-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between pb-8 mb-8 border-b border-stone-200 dark:border-stone-800 gap-4">
+        <div>
+            <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2">
+                Curriculum Study Map
+            </h1>
+            <p class="text-stone-600 dark:text-stone-400 text-sm leading-relaxed max-w-xl">
+                Structured foundations of disruption and complex systems. Each concept connects real-world RSS signals, citations, and critical evaluations to your core learning path.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+            <a href="/today"
+               class="px-4 py-2 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Daily Proposals
+            </a>
+            <a href="/study/ingest"
+               class="px-4 py-2 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Ingest Material
+            </a>
+        </div>
     </div>
-  </div>
+
+    {% if modules %}
+    <div class="space-y-10">
+        {% for mod in modules %}
+        <div class="border border-stone-200 dark:border-stone-800 rounded-xl bg-white dark:bg-stone-900/60 overflow-hidden shadow-xs">
+            <!-- Module Header -->
+            <div class="p-6 bg-stone-50/80 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
+                <div class="flex items-center justify-between gap-4 mb-2">
+                    <span class="px-2.5 py-0.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-mono font-medium rounded tracking-wide">
+                        {{ mod.module_id }}
+                    </span>
+                    <span class="text-xs font-mono text-stone-500">
+                        {{ mod.concepts|length }} Concepts
+                    </span>
+                </div>
+                <h2 class="text-xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100">
+                    {{ mod.title }}
+                </h2>
+                {% if mod.summary %}
+                <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                    {{ mod.summary }}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Module Concepts List -->
+            <div class="divide-y divide-stone-100 dark:divide-stone-800/60">
+                {% for concept in mod.concepts %}
+                <a href="/concepts/{{ concept.slug }}"
+                   class="p-5 block hover:bg-stone-50/80 dark:hover:bg-stone-900/40 transition-colors no-underline group">
+                    <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-2">
+                        <h3 class="text-base font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors flex items-center gap-2">
+                            <span class="text-xs font-mono text-stone-400 font-normal">#{{ concept.order }}</span>
+                            {{ concept.title }}
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            {% if concept.citations %}
+                            <span class="px-2 py-0.5 bg-pink-50 dark:bg-pink-950/60 border border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 text-[11px] font-mono rounded">
+                                {{ concept.citations|length }} citation{% if concept.citations|length != 1 %}s{% endif %}
+                            </span>
+                            {% endif %}
+                            <span class="text-xs font-mono text-stone-400 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors">
+                                &rarr;
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if concept.summary %}
+                    <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed mb-3">
+                        {{ concept.summary }}
+                    </p>
+                    {% endif %}
+
+                    {% if concept.keywords %}
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for kw in concept.keywords %}
+                        <span class="px-2 py-0.5 bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-400 rounded text-[11px] font-mono">
+                            {{ kw }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="border border-dashed border-stone-300 dark:border-stone-800 rounded-xl p-12 text-center bg-stone-50/50 dark:bg-stone-950/30">
+        <div class="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center mx-auto mb-4 text-stone-500">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+        </div>
+        <h3 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-1">
+            No course curriculum ingested yet
+        </h3>
+        <p class="text-xs text-stone-500 dark:text-stone-400 max-w-sm mx-auto mb-6">
+            Get started by ingesting your lecture materials (e.g. M1L1, M1L2) using the web authoring interface or local CLI.
+        </p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="/study/ingest"
+               class="px-5 py-2.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline">
+                Ingest Course Material
+            </a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

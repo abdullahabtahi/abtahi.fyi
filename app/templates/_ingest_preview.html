@@ -1,0 +1,72 @@
+<div class="border border-stone-200 dark:border-stone-800 rounded-xl bg-white dark:bg-stone-900 p-6 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 border-b border-stone-200 dark:border-stone-800 gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-mono font-medium rounded">
+                    {{ module.module_id }}
+                </span>
+                <span class="text-xs font-mono text-stone-500">
+                    {{ concepts|length }} Concepts Extracted
+                </span>
+            </div>
+            <h2 class="text-xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100">
+                {{ module.title }}
+            </h2>
+        </div>
+
+        <form hx-post="/api/study/ingest/commit"
+              hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+              hx-indicator="#commit-spinner">
+            <input type="hidden" name="module_id" value="{{ module.module_id }}">
+            <input type="hidden" name="content_text" value="{{ content_text }}">
+
+            <div class="flex items-center gap-3">
+                <span id="commit-spinner" class="htmx-indicator flex items-center gap-1.5 text-xs font-mono text-stone-500">
+                    <svg class="animate-spin h-3.5 w-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Saving to Firestore...
+                </span>
+                <button type="submit"
+                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Confirm & Add to Study Map
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Concept Cards Grid -->
+    <div class="space-y-4">
+        {% for concept in concepts %}
+        <div class="p-4 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/40 hover:border-stone-300 dark:hover:border-stone-700 transition-colors">
+            <div class="flex items-baseline justify-between gap-4 mb-2">
+                <h3 class="text-base font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                    <span class="text-xs font-mono text-stone-400 font-normal">#{{ concept.order }}</span>
+                    {{ concept.title }}
+                </h3>
+                <span class="text-xs font-mono text-stone-500 dark:text-stone-400 shrink-0">
+                    /concepts/{{ concept.slug }}
+                </span>
+            </div>
+
+            <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed mb-3">
+                {{ concept.summary }}
+            </p>
+
+            {% if concept.keywords %}
+            <div class="flex flex-wrap gap-1.5">
+                {% for kw in concept.keywords %}
+                <span class="px-2 py-0.5 bg-stone-200/60 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded text-[11px] font-mono">
+                    {{ kw }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>

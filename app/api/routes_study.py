@@ -7,14 +7,22 @@ from fastapi.templating import Jinja2Templates
 
 from app.auth.dependencies import require_csrf, require_identity
 from app.core.firestore import (
+    FirestoreConceptStore,
     FirestoreReviewStore,
     IdempotencyConflict,
     ReviewStore,
     ReviewStoreUnavailable,
 )
-from app.domain.models import DecisionCommand, DeferredWindow, Identity
+from app.domain.models import (
+    ConceptNode,
+    CourseModule,
+    DecisionCommand,
+    DeferredWindow,
+    Identity,
+)
 from app.models.feed import ConsentDecision
 from app.services.consent import ConsentService, ConsentStore, ConsentUnavailable
+from app.services.curriculum import CurriculumIngestionService
 from app.services.review import ReviewService
 
 study_router = APIRouter(tags=["Study"])
@@ -49,6 +57,20 @@ def get_consent_store() -> ConsentStore:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="consent storage is unavailable",
+        ) from error
+
+
+def get_concept_store() -> FirestoreConceptStore:
+    try:
+        from firebase_admin import firestore
+        from app.adapters.firebase_auth import ensure_firebase_initialized
+
+        app = ensure_firebase_initialized()
+        return FirestoreConceptStore(firestore.client(app=app))
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="concept storage is unavailable",
         ) from error
 
 
@@ -102,9 +124,149 @@ async def today_view(
 
 @study_router.get("/study", response_class=HTMLResponse)
 async def study_map_view(
-    request: Request, identity: Identity = Depends(require_identity)
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    store: FirestoreConceptStore = Depends(get_concept_store),
 ):
-    return templates.TemplateResponse(request=request, name="study.html", context={})
+    modules = []
+    try:
+        stored_modules = await store.list_modules(identity.uid)
+        all_concepts = await store.list_concepts(identity.uid)
+
+        concepts_by_module: dict[str, list[ConceptNode]] = {}
+        for c in all_concepts:
+            concepts_by_module.setdefault(c.module, []).append(c)
+
+        module_map = {m.module_id: m for m in stored_modules}
+        for mod_id in concepts_by_module:
+            if mod_id not in module_map:
+                module_map[mod_id] = CourseModule(
+                    module_id=mod_id,
+                    title=f"Module {mod_id}",
+                    summary="",
+                    concepts=[],
+                )
+
+        for mod_id, mod in sorted(module_map.items()):
+            mod_concepts = concepts_by_module.get(mod_id, [])
+            mod_concepts.sort(key=lambda x: (x.order, x.slug))
+            modules.append(
+                {
+                    "module_id": mod.module_id,
+                    "title": mod.title,
+                    "summary": mod.summary,
+                    "concepts": mod_concepts,
+                }
+            )
+    except Exception:
+        modules = []
+
+    return templates.TemplateResponse(
+        request=request,
+        name="study.html",
+        context={
+            "modules": modules,
+            "has_concepts": bool(modules),
+            "csrf_token": await _private_csrf_token(request, identity),
+        },
+    )
+
+
+@study_router.get("/study/ingest", response_class=HTMLResponse)
+async def ingest_view(
+    request: Request,
+    identity: Identity = Depends(require_identity),
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="ingest.html",
+        context={
+            "csrf_token": await _private_csrf_token(request, identity),
+        },
+    )
+
+
+@study_router.post("/api/study/ingest/preview", response_class=HTMLResponse)
+async def ingest_preview(
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    csrf_ok: bool = Depends(require_csrf),
+):
+    form = await request.form()
+    content_text = str(form.get("content_text", "")).strip()
+    fallback_module = str(form.get("module_id", "M1L1")).strip() or "M1L1"
+
+    upload_file = form.get("file")
+    if upload_file and hasattr(upload_file, "read"):
+        file_bytes = await upload_file.read()
+        if file_bytes:
+            content_text = file_bytes.decode("utf-8", errors="replace")
+
+    if not content_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No curriculum content provided. Please paste notes or upload a file.",
+        )
+
+    module, concepts = CurriculumIngestionService.parse_curriculum_text(
+        content_text, fallback_module=fallback_module
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="_ingest_preview.html",
+        context={
+            "module": module,
+            "concepts": concepts,
+            "content_text": content_text,
+            "csrf_token": await _private_csrf_token(request, identity),
+        },
+    )
+
+
+@study_router.post("/api/study/ingest/commit")
+async def ingest_commit(
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    csrf_ok: bool = Depends(require_csrf),
+    store: FirestoreConceptStore = Depends(get_concept_store),
+):
+    form = await request.form()
+    content_text = str(form.get("content_text", "")).strip()
+    fallback_module = str(form.get("module_id", "M1L1")).strip() or "M1L1"
+
+    if not content_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing curriculum content for commitment.",
+        )
+
+    module, concepts = CurriculumIngestionService.parse_curriculum_text(
+        content_text, fallback_module=fallback_module
+    )
+
+    try:
+        result = await CurriculumIngestionService.commit_curriculum(
+            uid=identity.uid,
+            module=module,
+            concepts=concepts,
+            concept_store=store,
+            raw_source_text=content_text,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to save concepts to Firestore.",
+        ) from error
+
+    if request.headers.get("HX-Request"):
+        from fastapi.responses import Response
+
+        response = Response(status_code=status.HTTP_200_OK)
+        response.headers["HX-Redirect"] = "/study"
+        return response
+
+    return result
 
 
 async def _decide(
@@ -257,15 +419,26 @@ async def operation_status(
 
 @study_router.get("/concepts/{slug}", response_class=HTMLResponse)
 async def concept_view(
-    slug: str, request: Request, identity: Identity = Depends(require_identity)
+    slug: str,
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    store: FirestoreConceptStore = Depends(get_concept_store),
 ):
-    from app.core.markdown_parser import parse_concept_markdown
+    concept = None
+    try:
+        concept = await store.get_concept(identity.uid, slug)
+    except Exception:
+        pass
 
-    mock_markdown = (
-        f"---\ntitle: {slug}\nmodule: M1L1\n---\n"
-        f"This is a synthesized concept page for {slug}."
-    )
-    concept = parse_concept_markdown(mock_markdown, slug)
+    if not concept:
+        from app.core.markdown_parser import parse_concept_markdown
+
+        mock_markdown = (
+            f"---\ntitle: {slug.replace('-', ' ').title()}\nmodule: M1L1\n---\n"
+            f"Synthesized curriculum concept notes for {slug}."
+        )
+        concept = parse_concept_markdown(mock_markdown, slug)
+
     return templates.TemplateResponse(
         request=request, name="concept.html", context={"concept": concept}
     )
