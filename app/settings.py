@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     JOB_AUTH_TOKEN: SecretStr | None = Field(default=None)
     INGESTION_OWNER_UID: str = Field(default="")
     APPROVED_FEED_URLS: str = Field(default="")
+    SCHEDULER_SERVICE_ACCOUNT: str = Field(default="")
+    SCHEDULER_AUDIENCE: str = Field(default="")
     
     # AI & Core Settings
     GEMINI_API_KEY: str | None = Field(default=None)

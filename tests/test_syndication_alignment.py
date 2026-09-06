@@ -204,17 +204,30 @@ async def test_zero_leakage_of_private_study_concepts(app_client):
     assert r_search.status_code == 200
     assert len(r_search.json()) == 0
 
-    # 2. Public feed contains zero private items
+    # 2. Public feed contains zero private items, operations, or consent tokens
     r_feed = await app_client.get("/feed.json")
     assert r_feed.status_code == 200
     feed_text = r_feed.text
     assert "m1l1" not in feed_text.lower()
     assert "private" not in feed_text.lower()
+    assert "consent" not in feed_text.lower()
+    assert "archive" not in feed_text.lower()
+    assert "scheduled_job" not in feed_text.lower()
 
-    # 3. PublicContentLoader strictly rejects private file paths
+    # 3. Public Atom feed contains zero private data
+    r_atom = await app_client.get("/feed.xml")
+    assert r_atom.status_code == 200
+    atom_text = r_atom.text.lower()
+    assert "m1l1" not in atom_text
+    assert "private" not in atom_text
+    assert "consent" not in atom_text
+    assert "scheduled_job" not in atom_text
+
+    # 4. PublicContentLoader strictly rejects private file paths
     loader = PublicContentLoader()
     with pytest.raises(ValueError, match="Security Violation"):
         loader.load_item("content/private/module1.md")
+
 
 @pytest.mark.asyncio
 async def test_semantic_fallback_to_fts5(app_client, monkeypatch):

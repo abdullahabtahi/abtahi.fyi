@@ -36,6 +36,10 @@ def initialize_projection() -> None:
         conn.close()
 
 
+import uuid
+from app.core.observability import OperationalEvent, emit_operational_event
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -43,8 +47,19 @@ async def lifespan(app: FastAPI):
     except Exception as error:
         app.state.readiness.mark_failed(type(error).__name__)
         logger.error("Projection initialization failed: %s", type(error).__name__)
+        emit_operational_event(OperationalEvent(
+            event_name="readiness_failed",
+            severity="CRITICAL",
+            labels={"status": "unavailable", "reason": type(error).__name__},
+            recovery_reference="docs/operations/recovery-guide.md#readiness"
+        ))
     else:
         app.state.readiness.mark_ready()
+        emit_operational_event(OperationalEvent(
+            event_name="readiness_ready",
+            severity="INFO",
+            labels={"status": "ok"}
+        ))
 
     yield
 
@@ -55,6 +70,14 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
         description="Private Compiled Study Pilot",
         lifespan=lifespan
     )
+
+    @app.middleware("http")
+    async def correlation_id_middleware(request: Request, call_next):
+        correlation_id = request.headers.get("X-Correlation-ID") or request.headers.get("X-Cloud-Trace-Context") or str(uuid.uuid4())
+        request.state.correlation_id = correlation_id
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = correlation_id
+        return response
 
     @app.middleware("http")
     async def attach_identity_middleware(request: Request, call_next):
@@ -96,10 +119,12 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
     app.include_router(admin_router)
 
     @app.get("/healthz")
+    @app.get("/health")
     async def healthz() -> JSONResponse:
         if app.state.configuration_error or not app.state.readiness.is_ready:
             return JSONResponse({"status": "unavailable"}, status_code=503)
         return JSONResponse({"status": "ok"})
+
 
     def custom_openapi():
         if app.openapi_schema:

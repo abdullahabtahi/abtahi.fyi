@@ -1,0 +1,54 @@
+# ==============================================================================
+# Restrictive Build-Context Exclusions for Cloud Run Container Image
+# ==============================================================================
+
+# Virtual environments & caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Local credentials & secrets
+.env
+.env.*
+!.env.example
+service-account*.json
+*-service-account.json
+firebase-admin-*.json
+google-credentials.json
+application_default_credentials.json
+
+# Local data, databases, and archives
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Git and tooling
+.git/
+.github/
+.vscode/
+.idea/
+.impeccable/
+.jules/
+.superpowers/
+.worktrees/
+
+# Test suites & specs
+tests/
+docs/
+
+# Node artifacts (Zero-Node production rule)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Logs
+*.log
+logs/
+firebase-debug.log

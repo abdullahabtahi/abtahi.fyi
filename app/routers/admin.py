@@ -50,18 +50,53 @@ def get_ingestion_service() -> IngestionService:
         ) from error
 
 
+from datetime import datetime, timezone
+from app.core.observability import (
+    ScheduledOperationOutcome,
+    OperationalEvent,
+    emit_operational_event,
+)
+
+
 @router.post("/api/poll-feeds")
 async def poll_registered_feeds(
+    request: Request,
     job_authorized: bool = Depends(require_job_identity),
     service: IngestionService = Depends(get_ingestion_service),
 ):
+    started_at = datetime.now(timezone.utc)
+    op_id = request.headers.get("X-CloudScheduler-JobName", f"poll-{int(started_at.timestamp())}")
+    invoker = getattr(request.state, "job_identity", "scheduler-service")
     try:
-        return await service.collect_registered_feeds()
+        results = await service.collect_registered_feeds()
+        completed_at = datetime.now(timezone.utc)
+        emit_operational_event(OperationalEvent(
+            event_name="scheduled_job_completed",
+            severity="INFO",
+            labels={"operation_type": "poll_feeds", "status": "completed"}
+        ))
+        return results
     except ArchiveUnavailable as error:
+        emit_operational_event(OperationalEvent(
+            event_name="scheduled_job_failed",
+            severity="ERROR",
+            labels={"operation_type": "poll_feeds", "status": "unavailable"}
+        ))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ingestion service is unavailable",
         ) from error
+    except Exception as exc:
+        emit_operational_event(OperationalEvent(
+            event_name="scheduled_job_failed",
+            severity="ERROR",
+            labels={"operation_type": "poll_feeds", "status": "failed"}
+        ))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="feed polling failed",
+        ) from exc
+
 
 @router.post("/api/consolidate", response_model=ConsolidationReport)
 async def consolidate_graph(
@@ -83,6 +118,13 @@ async def consolidate_graph(
         )
     finally:
         conn.close()
+
+    status_str = "completed" if report.status != ConsolidationStatus.FAILED else "failed"
+    emit_operational_event(OperationalEvent(
+        event_name="scheduled_job_completed" if status_str == "completed" else "scheduled_job_failed",
+        severity="INFO" if status_str == "completed" else "ERROR",
+        labels={"operation_type": "consolidate", "status": status_str}
+    ))
 
     if report.status == ConsolidationStatus.FAILED:
         return JSONResponse(

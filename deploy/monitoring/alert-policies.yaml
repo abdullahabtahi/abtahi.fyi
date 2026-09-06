@@ -1,0 +1,76 @@
+# ==============================================================================
+# Declarative Cloud Monitoring Alert Policies for abtahi.fyi
+# Enforces privacy-safe alerting: excludes all request bodies, credentials, and content.
+# ==============================================================================
+
+policies:
+  - name: readiness_unavailable
+    display_name: "abtahi.fyi - Application Readiness Unavailable"
+    severity: CRITICAL
+    documentation:
+      content: |
+        The abtahi.fyi service readiness endpoint (/healthz) is reporting unavailable or failing.
+        Review Cloud Run startup logs and consult the Operator Recovery Guide:
+        docs/operations/recovery-guide.md#readiness-failure
+      mime_type: "text/markdown"
+    conditions:
+      - display_name: "Health check status code != 200"
+        condition_threshold:
+          filter: >-
+            resource.type = "cloud_run_revision" AND
+            metric.type = "run.googleapis.com/request_count" AND
+            metric.labels.response_code_class = "5xx" AND
+            resource.labels.service_name = "abtahi-fyi"
+          comparison: COMPARISON_GT
+          threshold_value: 0
+          duration: 60s
+          aggregations:
+            - alignment_period: 60s
+              per_series_aligner: ALIGN_RATE
+
+  - name: privileged_job_failure
+    display_name: "abtahi.fyi - Scheduled Privileged Job Failed"
+    severity: ERROR
+    documentation:
+      content: |
+        A scheduled Cloud Scheduler job (poll-feeds or consolidate) failed.
+        Consult the Operator Recovery Guide:
+        docs/operations/recovery-guide.md#scheduled-job-failure
+      mime_type: "text/markdown"
+    conditions:
+      - display_name: "Scheduler job execution status != SUCCESS"
+        condition_threshold:
+          filter: >-
+            resource.type = "cloud_scheduler_job" AND
+            metric.type = "cloudscheduler.googleapis.com/job/attempt_count" AND
+            metric.labels.status != "SUCCESS"
+          comparison: COMPARISON_GT
+          threshold_value: 0
+          duration: 300s
+          aggregations:
+            - alignment_period: 300s
+              per_series_aligner: ALIGN_COUNT
+
+  - name: server_5xx_errors
+    display_name: "abtahi.fyi - Elevated 5xx Server Errors"
+    severity: HIGH
+    documentation:
+      content: |
+        Cloud Run is emitting 5xx response codes on serving routes.
+        Check recent revision deployments and consider rollback:
+        docs/operations/recovery-guide.md#rollback
+      mime_type: "text/markdown"
+    conditions:
+      - display_name: "5xx error rate exceeds threshold"
+        condition_threshold:
+          filter: >-
+            resource.type = "cloud_run_revision" AND
+            metric.type = "run.googleapis.com/request_count" AND
+            metric.labels.response_code_class = "5xx" AND
+            resource.labels.service_name = "abtahi-fyi"
+          comparison: COMPARISON_GT
+          threshold_value: 5
+          duration: 120s
+          aggregations:
+            - alignment_period: 60s
+              per_series_aligner: ALIGN_RATE

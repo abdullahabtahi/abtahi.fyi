@@ -68,9 +68,31 @@ async def test_openapi_filters_private_routes(client):
     assert "/feed.json" in paths
     assert "/llms.txt" in paths
 
-    # Private study routes should NOT be present (assuming /study is a private route)
+    # Private study and privileged operations routes should NOT be present
     assert "/study" not in paths
     assert "/capture" not in paths
+    assert "/api/poll-feeds" not in paths
+    assert "/api/consolidate" not in paths
+    assert "/admin" not in paths
+
+    # Schemas must not expose consent tokens, private archives, or credentials
+    schema_str = response.text.lower()
+    assert "csrf_secret" not in schema_str
+    assert "consent_token" not in schema_str
+    assert "study_archive" not in schema_str
+    assert "scheduler_service_account" not in schema_str
+
+@pytest.mark.asyncio
+async def test_error_response_privacy_leakage(client):
+    # Test 404 response
+    response = await client.get("/non-existent-random-path")
+    assert response.status_code == 404
+    body = response.text.lower()
+    assert "traceback" not in body
+    assert "secret" not in body
+    assert "private" not in body
+    assert "token" not in body
+
 
 @pytest.mark.asyncio
 async def test_timeline(client):

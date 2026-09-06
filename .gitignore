@@ -16,6 +16,9 @@ build/
 .env.*
 !.env.example
 *.env.local
+deploy/*.env
+!deploy/*.env.example
+
 
 # ── Credentials & Firebase ─────────────────────────────────────────────────────
 service-account*.json

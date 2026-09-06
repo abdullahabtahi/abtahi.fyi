@@ -105,20 +105,64 @@ def require_csrf(
     return True
 
 
+class WorkloadTokenVerifier:
+    def verify_workload_token(self, token: str, expected_audience: str, expected_principal: str) -> dict:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests
+        
+        claims = id_token.verify_oauth2_token(
+            token,
+            requests.Request(),
+            audience=expected_audience if expected_audience else None
+        )
+        if expected_principal and claims.get("email") != expected_principal:
+            raise ValueError(f"Workload principal mismatch: {claims.get('email')}")
+        return claims
+
+_default_workload_verifier = WorkloadTokenVerifier()
+
+def get_workload_verifier() -> WorkloadTokenVerifier:
+    return _default_workload_verifier
+
+
 def require_job_identity(request: Request) -> bool:
-    """Authorize scheduler/admin jobs independently from learner sessions."""
+    """Authorize scheduler/admin jobs via verified Google Cloud OIDC token or configured token."""
     settings = Settings()
-    configured_token = settings.JOB_AUTH_TOKEN
+    
+    # Explicitly reject requests presenting only learner cookies
     provided_token = request.headers.get("X-Job-Token", "")
     if not provided_token:
         authorization = request.headers.get("Authorization", "")
         if authorization.startswith("Bearer "):
             provided_token = authorization.split(" ", 1)[1]
-    if configured_token is None or not hmac.compare_digest(
-        provided_token, configured_token.get_secret_value()
-    ):
+            
+    if not provided_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="missing workload authorization")
+
+    # If JOB_AUTH_TOKEN is configured and matches, accept it (for tests/local CLI jobs)
+    configured_token = settings.JOB_AUTH_TOKEN
+    if configured_token and hmac.compare_digest(provided_token, configured_token.get_secret_value()):
+        return True
+
+    # Otherwise verify as Google Cloud OIDC workload token
+    expected_aud = settings.SCHEDULER_AUDIENCE
+    expected_principal = settings.SCHEDULER_SERVICE_ACCOUNT
+    
+    verifier = get_workload_verifier()
+    if hasattr(request, "app") and get_workload_verifier in getattr(request.app, "dependency_overrides", {}):
+        verifier = request.app.dependency_overrides[get_workload_verifier]()
+
+    try:
+        claims = verifier.verify_workload_token(
+            provided_token,
+            expected_audience=expected_aud,
+            expected_principal=expected_principal
+        )
+        request.state.job_identity = claims.get("email") or "workload-service"
+        return True
+    except Exception as err:
+        logger.warning(f"Workload identity verification failed: {err}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
-    return True
 
 class SessionRequest(BaseModel):
     idToken: str
