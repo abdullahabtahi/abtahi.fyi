@@ -1,6 +1,15 @@
 import re
 import hashlib
+import httpx
+import asyncio
+import feedparser
+from typing import Optional, Tuple
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+
+from app.models.feed import FeedSource
+from app.core.security import validate_outbound_url as security_validate_url
+from app.ingest.chunker import html_to_markdown, chunk_markdown_ast
+from app.domain.models import MarkdownChunk
 
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
@@ -38,38 +47,6 @@ class CanonicalURL:
     def __str__(self):
         return self.canonical
 
-import socket
-import ipaddress
-
-class SSRFValidationError(Exception):
-    pass
-
-def validate_outbound_url(url: str) -> str:
-    """
-    Resolves hostname and blocks RFC 1918, loopback, and Cloud Metadata endpoints.
-    """
-    parsed = urlparse(url)
-    hostname = parsed.hostname
-    
-    if not hostname:
-        raise SSRFValidationError(f"Invalid URL: {url}")
-        
-    try:
-        ip_addr_str = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(ip_addr_str)
-    except socket.gaierror:
-        raise SSRFValidationError(f"Could not resolve hostname: {hostname}")
-        
-        raise SSRFValidationError(f"SSRF Attempt blocked. Forbidden IP: {ip}")
-        
-    return url
-
-import httpx
-import asyncio
-from typing import Optional, Tuple
-from app.models.feed import FeedSource
-from app.core.security import validate_outbound_url as security_validate_url
-
 # US3: High-Concurrency Worker Pool Semaphore
 poll_semaphore = asyncio.Semaphore(5)
 
@@ -102,15 +79,11 @@ async def poll_feed(feed: FeedSource) -> Tuple[Optional[str], int, Optional[str]
                 new_lm = response.headers.get("Last-Modified")
                 
                 return response.text, response.status_code, new_etag, new_lm
-        except httpx.RequestError as e:
+        except httpx.RequestError:
             # Handle gracefully
             return None, 500, None, None
         except httpx.HTTPStatusError as e:
             return None, e.response.status_code, None, None
-
-import feedparser
-from app.ingest.chunker import html_to_markdown, chunk_markdown_ast
-from app.domain.models import MarkdownChunk
 
 async def process_feed(feed: FeedSource) -> list[MarkdownChunk]:
     """
@@ -128,7 +101,6 @@ async def process_feed(feed: FeedSource) -> list[MarkdownChunk]:
     for entry in parsed.entries:
         # Extract title and body
         title = entry.get("title", "Untitled")
-        link = entry.get("link", feed.url)
         
         html_content = entry.get("content", [{"value": ""}])[0]["value"]
         if not html_content:

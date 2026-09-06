@@ -1,5 +1,6 @@
 import os
 import socket
+import ipaddress
 from urllib.parse import urlparse
 from google.cloud import secretmanager
 
@@ -34,13 +35,12 @@ def validate_outbound_url(url: str) -> bool:
         return False
 
     try:
-        ip = socket.gethostbyname(hostname)
-    except socket.gaierror:
+        ip_addr_str = socket.gethostbyname(hostname)
+        ip = ipaddress.ip_address(ip_addr_str)
+    except (socket.gaierror, ValueError):
         return False
         
-    # Block loopback, link-local (GCP metadata), and private ranges
-    if ip.startswith(("127.", "169.254.", "10.", "192.168.")) or (
-        ip.startswith("172.") and 16 <= int(ip.split(".")[1]) <= 31
-    ):
+    if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_unspecified:
         return False
+
     return True
