@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from google import genai
@@ -19,6 +20,10 @@ class UntrustedContentError(Exception):
 class ProvenanceError(Exception):
     pass
 
+
+class SourceConsentError(PermissionError):
+    """Raised before private source content leaves the application."""
+
 class ProposerOutput(BaseModel):
     edge_type: EdgeType
     match_strength: MatchStrength
@@ -29,7 +34,16 @@ class ProposerOutput(BaseModel):
     learning_payoff: str
     proposed_cited_addition: str
 
-def generate_proposal(source_chunk_id: str, chunk_text: str) -> ConnectionProposal:
+def generate_proposal(
+    source_chunk_id: str,
+    chunk_text: str,
+    consent_checker: Callable[[str], bool] | None = None,
+) -> ConnectionProposal:
+    if consent_checker is None or not consent_checker(source_chunk_id):
+        raise SourceConsentError(
+            "source revision has not granted consent for external model processing"
+        )
+
     # We fence the input properly (T013)
     fenced_chunk = f"<untrusted_content>\n{chunk_text}\n</untrusted_content>"
     
