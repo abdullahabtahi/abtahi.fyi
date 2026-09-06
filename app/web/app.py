@@ -1,50 +1,53 @@
-from fastapi import FastAPI
+import logging
+import os
+import sqlite3
+from collections.abc import Callable
 from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from app.auth.dependencies import auth_router
 from app.api.routes_study import study_router
 from app.routers.syndication import router as syndication_router
 from app.routers.admin import router as admin_router
+from app.core.readiness import ReadinessState
 from app.settings import Settings
-import logging
-import os
 
 logger = logging.getLogger(__name__)
 
+
+def initialize_projection() -> None:
+    from app.core.db import init_sqlite_db
+    from app.core.network import network_cache
+    from app.core.public_loader import PublicContentLoader
+
+    conn = init_sqlite_db()
+    conn.close()
+    loader = PublicContentLoader()
+    items = loader.load_all_items()
+    edges = [
+        (item.id, out_id, {"type": "reference"})
+        for item in items
+        for out_id in getattr(item, "outgoing_edges", [])
+    ]
+    network_cache.initialize(edges)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize Database and Graph
     try:
-        from app.core.db import init_sqlite_db
-        from app.core.network import network_cache
-        from app.core.public_loader import PublicContentLoader
-        
-        # This will create tables and load the vec extension
-        conn = init_sqlite_db()
-        conn.close()
-        logger.info("Database initialized with sqlite-vec.")
-        
-        # Pre-warm the graph
-        loader = PublicContentLoader()
-        items = loader.load_all_items()
-        
-        edges = []
-        for item in items:
-            for out_id in getattr(item, 'outgoing_edges', []):
-                edges.append((item.id, out_id, {"type": "reference"}))
-        
-        network_cache.initialize(edges)
-        logger.info(f"NetworkX graph pre-warmed with {len(items)} items and {len(edges)} edges.")
-    except Exception as e:
-        logger.error(f"Failed to initialize lifespan resources: {e}")
-        
-    yield
-    
-    # Shutdown logic if any
-    pass
+        app.state.initialize_projection()
+    except (OSError, RuntimeError, sqlite3.Error) as error:
+        app.state.readiness.mark_failed(type(error).__name__)
+        logger.error("Projection initialization failed: %s", type(error).__name__)
+    else:
+        app.state.readiness.mark_ready()
 
-def create_app() -> FastAPI:
+    yield
+
+
+def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
     settings = Settings()
     
     app = FastAPI(
@@ -59,6 +62,8 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
     app.state.settings = settings
+    app.state.initialize_projection = initialize or initialize_projection
+    app.state.readiness = ReadinessState()
 
     app.include_router(auth_router)
     app.include_router(study_router)
@@ -66,8 +71,10 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
 
     @app.get("/healthz")
-    async def healthz() -> dict[str, str]:
-        return {"status": "ok"}
+    async def healthz() -> JSONResponse:
+        if not app.state.readiness.is_ready:
+            return JSONResponse({"status": "unavailable"}, status_code=503)
+        return JSONResponse({"status": "ok"})
 
     def custom_openapi():
         if app.openapi_schema:
