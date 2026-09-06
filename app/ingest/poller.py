@@ -1,6 +1,6 @@
 import re
 import hashlib
-from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+from urllib.parse import urljoin, urlparse, urlunparse, parse_qsl, urlencode
 
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
@@ -79,10 +79,6 @@ async def poll_feed(feed: FeedSource) -> Tuple[Optional[str], int, Optional[str]
     Returns (content, status_code, new_etag, new_last_modified).
     """
     async with poll_semaphore:
-        # T002: Use the robust SSRF guardrail
-        if not security_validate_url(feed.url):
-            return None, 403, None, None
-
         headers = {}
         if feed.etag:
             headers["If-None-Match"] = feed.etag
@@ -90,18 +86,32 @@ async def poll_feed(feed: FeedSource) -> Tuple[Optional[str], int, Optional[str]
             headers["If-Modified-Since"] = feed.last_modified
 
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0), follow_redirects=True, max_redirects=3) as client:
-                response = await client.get(feed.url, headers=headers)
+            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0), follow_redirects=False) as client:
+                request_url = feed.url
+                for _ in range(4):
+                    if not security_validate_url(request_url):
+                        return None, 403, None, None
+
+                    response = await client.get(request_url, headers=headers)
+
+                    if 300 <= response.status_code < 400:
+                        location = response.headers.get("Location")
+                        if not location:
+                            return None, response.status_code, None, None
+                        request_url = urljoin(str(response.request.url), location)
+                        continue
                 
-                if response.status_code == 304:
-                    return None, 304, None, None
-                    
-                response.raise_for_status()
-                
-                new_etag = response.headers.get("ETag")
-                new_lm = response.headers.get("Last-Modified")
-                
-                return response.text, response.status_code, new_etag, new_lm
+                    if response.status_code == 304:
+                        return None, 304, None, None
+
+                    response.raise_for_status()
+
+                    new_etag = response.headers.get("ETag")
+                    new_lm = response.headers.get("Last-Modified")
+
+                    return response.text, response.status_code, new_etag, new_lm
+
+                return None, 508, None, None
         except httpx.RequestError as e:
             # Handle gracefully
             return None, 500, None, None

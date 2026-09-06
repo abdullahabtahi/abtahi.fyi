@@ -93,6 +93,63 @@ async def test_poll_feed_success():
         assert result is not None
         assert "Test Feed" in result
 
+
+@pytest.mark.asyncio
+async def test_poll_feed_disables_automatic_redirects():
+    feed = FeedSource(id="1", url="https://example.com/feed.xml")
+    client_options = {}
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, *args, **kwargs):
+            return Response(
+                200,
+                content=b"<rss></rss>",
+                request=httpx.Request("GET", feed.url),
+            )
+
+    def create_client(**kwargs):
+        client_options.update(kwargs)
+        return Client()
+
+    with patch("app.ingest.poller.httpx.AsyncClient", side_effect=create_client):
+        await poll_feed(feed)
+
+    assert client_options["follow_redirects"] is False
+
+
+@pytest.mark.asyncio
+async def test_poll_feed_rejects_redirect_to_non_public_url():
+    feed = FeedSource(id="1", url="https://example.com/feed.xml")
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, *args, **kwargs):
+            return Response(
+                302,
+                headers={"Location": "http://169.254.169.254/metadata"},
+                request=httpx.Request("GET", feed.url),
+            )
+
+    with (
+        patch("app.ingest.poller.httpx.AsyncClient", return_value=Client()),
+        patch("app.ingest.poller.security_validate_url", side_effect=[True, False]),
+    ):
+        content, status, _, _ = await poll_feed(feed)
+
+    assert content is None
+    assert status == 403
+
 @pytest.mark.asyncio
 async def test_poll_feed_conditional_get():
     feed = FeedSource(id="1", url="https://example.com/feed.xml", last_fetched_at=None, etag='"12345"', last_modified=None)
