@@ -179,6 +179,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 | Parameter | Production Value |
 | :--- | :--- |
 | **Service Identifier** | `abtahi-fyi` |
+| **Active Cloud Run Revision** | `abtahi-fyi-00005-ds6` |
 | **Mandatory Challenge Label** | `dev-tutorial=cloud-run-ai-challenge` |
 | **Live Service Endpoint** | [https://abtahi-fyi-qvj33q6t2a-uc.a.run.app](https://abtahi-fyi-qvj33q6t2a-uc.a.run.app) |
 | **Direct Domain** | [https://abtahi-fyi-903682941870.us-central1.run.app](https://abtahi-fyi-903682941870.us-central1.run.app) |
