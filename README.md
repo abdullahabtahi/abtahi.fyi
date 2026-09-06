@@ -179,7 +179,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 | Parameter | Production Value |
 | :--- | :--- |
 | **Service Identifier** | `abtahi-fyi` |
-| **Active Cloud Run Revision** | `abtahi-fyi-00007-4pc` |
+| **Active Cloud Run Revision** | `abtahi-fyi-00008-rdc` |
 | **Mandatory Challenge Label** | `dev-tutorial=cloud-run-ai-challenge` |
 | **GCP Project** | `spatial-cat-489006-a4` (Region: `us-central1`) |
 | **Live Service Endpoint** | [https://abtahi-fyi-qvj33q6t2a-uc.a.run.app](https://abtahi-fyi-qvj33q6t2a-uc.a.run.app) |
