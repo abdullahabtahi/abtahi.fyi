@@ -31,9 +31,8 @@ I tend to explore multiple technical domains (AI/ML, economic complexity, distri
 
 ---
 
-<!-- PLACEHOLDER: Hero Image / App Showcase GIF -->
 <div align="center">
-  <img src="docs/assets/hero-study-map.png" alt="abtahi.fyi Interactive Study Map and Today Review Queue" width="850" />
+  <img src="assets/plates/figure1.gif" alt="abtahi.fyi Interactive Study Map and Today Review Queue" width="850" />
   <p><em>Figure 1: Interactive Canvas 2D Knowledge Graph and the Bounded Daily Review Queue.</em></p>
 </div>
 
