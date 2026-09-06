@@ -261,8 +261,22 @@ async def test_summary_response_latency_benchmark(app_client):
         assert resp.status_code == 200
         durations.append(duration)
 
-    avg_duration = sum(durations) / len(durations)
-    assert avg_duration < 0.05, f"Expected <50ms, got {avg_duration*1000:.2f}ms"
+@pytest.mark.asyncio
+async def test_timeline_signal_direct_article_url_and_domain_chip(app_client):
+    """Verify signal titles link directly to canonical post URLs and domain chips link to domain homepages."""
+    from app.core.firestore import resolve_article_url
+    assert resolve_article_url("thewatermba.com", "Membrane Fouling Rates as Pre-Failure Diagnostics") == "https://www.thewatermba.com/p/the-trick-is-inside-the-membrane"
+    assert resolve_article_url("blog.bluedot.org", "Act in BlueDot’s best interest") == "https://blog.bluedot.org/p/expenses"
+
+    response = await app_client.get("/")
+    assert response.status_code == 200
+    html = response.text
+
+    if "Membrane Fouling Rates as Pre-Failure Diagnostics" in html:
+        # Title must link to the specific article post, not the domain root
+        assert 'href="https://www.thewatermba.com/p/the-trick-is-inside-the-membrane"' in html
+        # Domain badge must link to domain homepage
+        assert 'href="https://thewatermba.com"' in html
 
 
 

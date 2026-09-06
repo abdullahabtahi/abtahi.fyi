@@ -80,6 +80,7 @@ class ConnectionProposal(BaseModel):
     defer_until: datetime | None = None
     reviewed_at: datetime | None = None
     dismissal_operation_id: NonEmptyText | None = None
+    source_url: str | None = None
 
     @model_validator(mode="after")
     def validate_match_and_final_content(self) -> "ConnectionProposal":

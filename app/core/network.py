@@ -300,11 +300,17 @@ class NetworkScienceCache:
                 FROM connected_signals
                 """
             )
+            from app.core.firestore import resolve_article_url
             for row in cursor.fetchall():
+                article_url = resolve_article_url(
+                    source_domain=row[4] or "",
+                    source_title=row[3] or "Signal",
+                    explicit_url=row[2] or "",
+                )
                 sig = {
                     "id": row[0],
                     "proposal_id": row[1],
-                    "source_url": row[2] or "",
+                    "source_url": article_url,
                     "source_title": row[3] or "Signal",
                     "source_domain": row[4] or "",
                     "concept_slug": row[5],

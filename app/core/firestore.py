@@ -283,6 +283,68 @@ class FirestoreReviewStore:
         except Exception:
             pass
 
+def resolve_article_url(
+    source_domain: str,
+    source_title: str,
+    location: str = "",
+    explicit_url: str | None = None,
+) -> str:
+    from urllib.parse import urlparse
+
+    clean_domain = (
+        source_domain.replace("https://", "").replace("http://", "").strip("/")
+    )
+    if explicit_url and explicit_url.strip():
+        parsed = urlparse(explicit_url.strip())
+        path = parsed.path.rstrip("/")
+        if path and path not in ("", "/"):
+            return explicit_url.strip()
+
+    text = f"{source_title} {location}".lower()
+
+    if "desalination" in text:
+        return "https://www.thewatermba.com/p/where-should-we-build-a-desalination"
+    if "neom" in text:
+        return "https://www.thewatermba.com/p/the-day-the-neom-backlog-disappeared"
+    if "membrane" in text or "fouling" in text:
+        return "https://www.thewatermba.com/p/the-trick-is-inside-the-membrane"
+    if "spain" in text:
+        return "https://www.thewatermba.com/p/how-spains-emptiest-province-manages"
+    if "platform" in text:
+        return "https://www.thewatermba.com/p/platforms-not-projects"
+    if "super trend" in text:
+        return "https://www.thewatermba.com/p/water-is-a-30-50-year-super-trend"
+    if "fukushima" in text:
+        return "https://www.thewatermba.com/p/fukushima-was-a-water-pump-story"
+
+    if (
+        "best interest" in text
+        or "expense" in text
+        or "micro-approval" in text
+        or "approval" in text
+    ):
+        return "https://blog.bluedot.org/p/expenses"
+    if "facilitate" in text:
+        return "https://blog.bluedot.org/p/how-i-facilitate"
+    if "comms" in text:
+        return "https://blog.bluedot.org/p/ai-safety-comms-work-that-i-would"
+    if "rapid grant" in text:
+        return "https://blog.bluedot.org/p/weve-given-out-50000-in-rapid-grants"
+    if "vibe-code" in text:
+        return "https://blog.bluedot.org/p/why-you-should-vibe-code-your-ai"
+
+    import re
+
+    clean_slug = re.sub(r"[^\w\s-]", "", source_title).strip().lower().replace(" ", "-")
+    clean_slug = re.sub(r"-+", "-", clean_slug)
+    if "watermba" in clean_domain:
+        return f"https://www.thewatermba.com/p/{clean_slug}"
+    if "bluedot" in clean_domain:
+        return f"https://blog.bluedot.org/p/{clean_slug}"
+
+    return f"https://{clean_domain}"
+
+
     def _sync_signal_to_sqlite(self, uid: str, event: PrivateProjectionEvent) -> None:
         import json
         from datetime import datetime, timezone
@@ -304,13 +366,14 @@ class FirestoreReviewStore:
         s_lower = source_domain_name.lower()
         if "water" in s_lower or "watermba" in s_lower:
             source_domain = "thewatermba.com"
-            source_url = "https://www.thewatermba.com/"
         elif "bluedot" in s_lower:
             source_domain = "blog.bluedot.org"
-            source_url = "https://blog.bluedot.org/"
         else:
             source_domain = source_domain_name.lower().replace(" ", "") + ".org"
-            source_url = f"https://{source_domain}"
+
+        source_url = resolve_article_url(
+            source_domain, source_title, location, prop_data.get("source_url")
+        )
 
         excerpt = prop_data.get("excerpt", "")
         reviewed_citation = event.reviewed_citation or prop_data.get("final_reviewed_content", "")
@@ -664,71 +727,70 @@ def hydrate_sqlite_from_firestore(uid: str, conn) -> None:
                     ),
                 )
 
-        # 2. Hydrate Connected Signals if empty
-        cursor.execute("SELECT count(*) FROM connected_signals")
-        if cursor.fetchone()[0] == 0:
-            proposals = list(user_ref.collection("proposals").where("status", "==", "CONNECTED").stream())
-            for p in proposals:
-                data = p.to_dict() or {}
-                location = data.get("location", "")
-                if ":" in location:
-                    parts = location.split(":", 1)
-                    source_domain_name = parts[0].strip()
-                    source_title = parts[1].strip()
-                else:
-                    source_domain_name = "External Signal"
-                    source_title = location or "External Reference"
+        # 2. Hydrate Connected Signals
+        proposals = list(user_ref.collection("proposals").where("status", "==", "CONNECTED").stream())
+        for p in proposals:
+            data = p.to_dict() or {}
+            location = data.get("location", "")
+            if ":" in location:
+                parts = location.split(":", 1)
+                source_domain_name = parts[0].strip()
+                source_title = parts[1].strip()
+            else:
+                source_domain_name = "External Signal"
+                source_title = location or "External Reference"
 
-                s_lower = source_domain_name.lower()
-                if "water" in s_lower or "watermba" in s_lower:
-                    source_domain = "thewatermba.com"
-                    source_url = "https://www.thewatermba.com/"
-                elif "bluedot" in s_lower:
-                    source_domain = "blog.bluedot.org"
-                    source_url = "https://blog.bluedot.org/"
-                else:
-                    source_domain = source_domain_name.lower().replace(" ", "") + ".org"
-                    source_url = f"https://{source_domain}"
+            s_lower = source_domain_name.lower()
+            if "water" in s_lower or "watermba" in s_lower:
+                source_domain = "thewatermba.com"
+            elif "bluedot" in s_lower:
+                source_domain = "blog.bluedot.org"
+            else:
+                source_domain = source_domain_name.lower().replace(" ", "") + ".org"
 
-                concept_slug = data.get("concept_id")
-                edge_type = data.get("edge_type", "example_of")
-                excerpt = data.get("excerpt", "")
-                citation = data.get("final_reviewed_content") or data.get("proposed_cited_addition", "")
-                rationale = data.get("rationale", "")
-                connected_at = data.get("reviewed_at") or datetime.now(timezone.utc).isoformat()
-                if isinstance(connected_at, datetime):
-                    connected_at = connected_at.isoformat()
+            source_url = resolve_article_url(
+                source_domain, source_title, location, data.get("source_url")
+            )
 
-                cursor.execute("SELECT title, citations_json FROM curriculum_concepts WHERE slug = ?", (concept_slug,))
-                c_row = cursor.fetchone()
-                concept_title = c_row[0] if c_row else (concept_slug.replace("-", " ").title() if concept_slug else "Concept")
+            concept_slug = data.get("concept_id")
+            edge_type = data.get("edge_type", "example_of")
+            excerpt = data.get("excerpt", "")
+            citation = data.get("final_reviewed_content") or data.get("proposed_cited_addition", "")
+            rationale = data.get("rationale", "")
+            connected_at = data.get("reviewed_at") or datetime.now(timezone.utc).isoformat()
+            if isinstance(connected_at, datetime):
+                connected_at = connected_at.isoformat()
 
-                if c_row:
-                    try:
-                        c_citations = json.loads(c_row[1]) if c_row[1] else []
-                    except Exception:
-                        c_citations = []
-                    if citation and citation not in c_citations:
-                        c_citations.append(citation)
-                        cursor.execute(
-                            "UPDATE curriculum_concepts SET citations_json = ? WHERE slug = ?",
-                            (json.dumps(c_citations), concept_slug),
-                        )
+            cursor.execute("SELECT title, citations_json FROM curriculum_concepts WHERE slug = ?", (concept_slug,))
+            c_row = cursor.fetchone()
+            concept_title = c_row[0] if c_row else (concept_slug.replace("-", " ").title() if concept_slug else "Concept")
 
-                cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO connected_signals (
-                        id, proposal_id, source_url, source_title, source_domain,
-                        concept_slug, concept_title, edge_type, excerpt,
-                        reviewed_citation, rationale, connected_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        p.id, p.id, source_url, source_title, source_domain,
-                        concept_slug or "", concept_title, edge_type, excerpt,
-                        citation, rationale, connected_at,
-                    ),
-                )
+            if c_row:
+                try:
+                    c_citations = json.loads(c_row[1]) if c_row[1] else []
+                except Exception:
+                    c_citations = []
+                if citation and citation not in c_citations:
+                    c_citations.append(citation)
+                    cursor.execute(
+                        "UPDATE curriculum_concepts SET citations_json = ? WHERE slug = ?",
+                        (json.dumps(c_citations), concept_slug),
+                    )
+
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO connected_signals (
+                    id, proposal_id, source_url, source_title, source_domain,
+                    concept_slug, concept_title, edge_type, excerpt,
+                    reviewed_citation, rationale, connected_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    p.id, p.id, source_url, source_title, source_domain,
+                    concept_slug or "", concept_title, edge_type, excerpt,
+                    citation, rationale, connected_at,
+                ),
+            )
         conn.commit()
     except Exception:
         pass

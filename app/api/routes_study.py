@@ -591,10 +591,16 @@ async def concept_view(
             (slug,),
         )
         signals = []
+        from app.core.firestore import resolve_article_url
         for s_row in cursor.fetchall():
+            article_url = resolve_article_url(
+                source_domain=s_row[3] or "",
+                source_title=s_row[2] or "",
+                explicit_url=s_row[1],
+            )
             signals.append({
                 "id": s_row[0],
-                "source_url": s_row[1],
+                "source_url": article_url,
                 "source_title": s_row[2],
                 "source_domain": s_row[3],
                 "edge_type": s_row[4],

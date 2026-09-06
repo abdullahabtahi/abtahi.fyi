@@ -79,6 +79,7 @@ def load_connected_signals() -> list[dict]:
             ORDER BY connected_at DESC
             """
         )
+        from app.core.firestore import resolve_article_url
         for row in cursor.fetchall():
             try:
                 pub_dt = datetime.fromisoformat(row[11])
@@ -88,13 +89,18 @@ def load_connected_signals() -> list[dict]:
                 pub_dt = datetime.now(timezone.utc)
 
             sig_id = row[0]
+            article_url = resolve_article_url(
+                source_domain=row[4] or "",
+                source_title=row[3] or "",
+                explicit_url=row[2],
+            )
             signals.append({
                 "id": f"signal-{sig_id}",
                 "item_type": "signal",
                 "proposal_id": row[1],
                 "title": row[3],
-                "canonical_url": row[2],
-                "source_url": row[2],
+                "canonical_url": article_url,
+                "source_url": article_url,
                 "domain": row[4],
                 "concept_slug": row[5],
                 "concept_title": row[6],
