@@ -123,7 +123,7 @@ Built in alignment with the **Google Cloud Well-Architected Framework (Security 
 
 * **Backend & API**: Python 3.12, FastAPI, Pydantic v2, NetworkX
 * **Storage & Vectors**: Cloud Firestore (NoSQL isolated store), SQLite (WAL Mode + FTS5 + `sqlite-vec`)
-* **AI & Machine Learning**: Google Gemini Pro (Multi-turn generation & structured concept extraction)
+* **AI**: Google Gemini Flash 3.8 (Multi-turn generation & structured concept extraction)
 * **Frontend / UI**: Jinja2 Templates, HTMX 2.x, Alpine.js, Tailwind CSS (Standalone CLI), `vasturiano/force-graph` (Canvas 2D)
 * **Cloud Infrastructure**: Google Cloud Run, Cloud Secret Manager, Cloud Scheduler (OIDC), Firebase Auth, Cloud Logging
 
