@@ -272,6 +272,60 @@ async def ingest_commit(
     return result
 
 
+@study_router.post("/api/study/seed-sample")
+async def seed_sample(
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    csrf_ok: bool = Depends(require_csrf),
+    store: FirestoreConceptStore = Depends(get_concept_store),
+):
+    sample_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "module_sample", "AAIF_600_Foundations_of_Disruption", "M1L1"),
+        os.path.join(os.getcwd(), "module_sample", "AAIF_600_Foundations_of_Disruption", "M1L1"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "abtahi-fyi", "module_sample", "AAIF_600_Foundations_of_Disruption", "M1L1"),
+        "/Users/abdullahabtahi/Ideathon/module_sample/AAIF_600_Foundations_of_Disruption/M1L1",
+    ]
+    content_text = None
+    for p in sample_paths:
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                content_text = f.read()
+            break
+
+    if not content_text:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sample curriculum material M1L1 was not found.",
+        )
+
+    module, concepts = CurriculumIngestionService.parse_curriculum_text(
+        content_text, fallback_module="M1L1"
+    )
+
+    try:
+        result = await CurriculumIngestionService.commit_curriculum(
+            uid=identity.uid,
+            module=module,
+            concepts=concepts,
+            concept_store=store,
+            raw_source_text=content_text,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to seed sample concepts into Firestore.",
+        ) from error
+
+    if request.headers.get("HX-Request"):
+        from fastapi.responses import Response
+
+        response = Response(status_code=status.HTTP_200_OK)
+        response.headers["HX-Redirect"] = "/study"
+        return response
+
+    return result
+
+
 async def _decide(
     request: Request,
     proposal_id: str,

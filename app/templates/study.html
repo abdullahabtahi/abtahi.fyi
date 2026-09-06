@@ -85,24 +85,37 @@
     </div>
     {% else %}
     <!-- Empty State -->
-    <div class="max-w-md mx-auto my-8 border border-stone-200 dark:border-stone-800 rounded-2xl p-8 text-center bg-stone-50/50 dark:bg-stone-900/40 shadow-xs">
+    <div class="max-w-xl mx-auto my-12 border border-stone-200 dark:border-stone-800 rounded-2xl p-8 bg-stone-50/50 dark:bg-stone-900/40 text-center shadow-xs">
         <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 mx-auto mb-4" style="width:48px;height:48px;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
             </svg>
         </div>
-        <h3 class="text-xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
+        <h2 class="text-xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
             No course curriculum ingested yet
-        </h3>
-        <p class="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Get started by ingesting your lecture materials (e.g. M1L1, M1L2) using the web authoring interface or local CLI.
+        </h2>
+        <p class="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed max-w-md mx-auto">
+            Ingest course lectures and notes to extract concept hierarchies, map intellectual tensions, and feed spaced-repetition flashcards directly into your personal learning graph.
         </p>
-        <div class="flex items-center justify-center gap-4">
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a href="/study/ingest"
-               class="px-4 py-2 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono rounded-lg transition-colors no-underline shadow-xs flex items-center gap-1.5">
+               class="w-full sm:w-auto px-4 py-2.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono rounded-lg transition-colors no-underline shadow-xs inline-flex items-center justify-center gap-2">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Ingest Course Material
+                <span>Ingest Lecture Notes</span>
             </a>
+
+            <button type="button"
+                    hx-post="/api/study/seed-sample"
+                    hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+                    hx-indicator="#seed-spinner"
+                    class="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700/60 text-stone-700 dark:text-stone-200 text-xs font-mono rounded-lg transition-colors inline-flex items-center justify-center gap-2 cursor-pointer">
+                <svg id="seed-spinner" class="htmx-indicator animate-spin w-3.5 h-3.5 text-stone-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <span>Load Sample (M1L1: Complex Systems)</span>
+            </button>
         </div>
     </div>
     {% endif %}

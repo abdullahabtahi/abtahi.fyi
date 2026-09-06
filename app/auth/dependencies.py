@@ -272,3 +272,28 @@ def logout_redirect(response: Response):
     redirect.delete_cookie(key="session", path="/")
     redirect.delete_cookie(key="csrf_nonce", path="/")
     return redirect
+
+
+@auth_pages_router.get("/dev-login")
+async def dev_login_view(request: Request, redirect_to: str = "/study"):
+    import os
+    if os.environ.get("K_SERVICE"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    from secrets import token_urlsafe
+
+    redirect = RedirectResponse(url=redirect_to, status_code=status.HTTP_303_SEE_OTHER)
+    redirect.set_cookie(
+        key="session",
+        value="local-dev-session",
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+    redirect.set_cookie(
+        key="csrf_nonce",
+        value=token_urlsafe(32),
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+    return redirect

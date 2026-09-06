@@ -41,7 +41,7 @@
         class="border-b border-stone-200 dark:border-stone-800 py-5 bg-white/95 dark:bg-stone-950/95 backdrop-blur-sm sticky top-0 z-40 transition-colors duration-200">
         <div class="max-w-4xl mx-auto px-6 flex items-baseline justify-between">
             <a href="/"
-                class="font-['Bellefair'] text-xl text-stone-900 dark:text-stone-100 no-underline hover:text-pink-600 dark:hover:text-pink-400 transition-colors tracking-wide"
+                class="font-['Bellefair'] text-xl text-stone-900 dark:text-stone-100 no-underline hover:text-pink-700 dark:hover:text-pink-400 transition-colors tracking-wide"
                 style="font-family:'Bellefair',serif;font-size:21px;">
                 abtahi.fyi
             </a>
@@ -55,34 +55,35 @@
                 {% if user %}
                 <div class="relative inline-block text-left" x-data="{ open: false }">
                     <button @click="open = !open" @click.outside="open = false" type="button"
-                        class="{% if current_path.startswith('/study') or current_path == '/today' or current_path == '/sources' or current_path.startswith('/concepts/') %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors flex items-center gap-1 py-1 focus:outline-none cursor-pointer"
+                        class="{% if current_path.startswith('/study') or current_path == '/today' or current_path == '/sources' or current_path.startswith('/concepts/') %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors flex items-center gap-1.5 py-1 focus:outline-none cursor-pointer"
                         aria-expanded="false" aria-haspopup="true">
                         <span>Study</span>
-                        <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-180': open }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="m6 9 6 6 6-6"/></svg>
+                        <svg class="w-3 h-3 transition-transform text-stone-400" :class="{ 'rotate-180': open }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                     <div x-show="open" x-cloak
-                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter="transition ease-out duration-150"
                         x-transition:enter-start="transform opacity-0 scale-95"
                         x-transition:enter-end="transform opacity-100 scale-100"
-                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave="transition ease-in duration-100"
                         x-transition:leave-start="transform opacity-100 scale-100"
                         x-transition:leave-end="transform opacity-0 scale-95"
-                        class="absolute right-0 sm:left-0 z-50 mt-2 w-48 origin-top-left rounded-lg bg-white dark:bg-stone-900 shadow-lg border border-stone-200 dark:border-stone-800 py-1 font-mono text-xs">
-                        <a href="/study" class="flex items-center gap-2 px-4 py-2.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors no-underline">
-                            <svg class="w-3.5 h-3.5 shrink-0" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                            Study Map
+                        class="absolute right-0 sm:left-0 z-50 mt-2 origin-top-left rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-1.5 font-mono text-xs shadow-lg"
+                        style="min-width: 200px; width: 200px;">
+                        <a href="/study" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100 transition-colors no-underline whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5 shrink-0 text-stone-500" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            <span class="font-medium">Study Map</span>
                         </a>
-                        <a href="/today" class="flex items-center gap-2 px-4 py-2.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors no-underline">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" style="width:6px;height:6px;"></span>
-                            Today Queue
+                        <a href="/today" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100 transition-colors no-underline whitespace-nowrap">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-0.5 mr-0.5" style="width:8px;height:8px;"></span>
+                            <span class="font-medium">Today Queue</span>
                         </a>
-                        <a href="/study/ingest" class="flex items-center gap-2 px-4 py-2.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors no-underline">
-                            <svg class="w-3.5 h-3.5 shrink-0" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                            Ingest Notes
+                        <a href="/study/ingest" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100 transition-colors no-underline whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5 shrink-0 text-stone-500" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span class="font-medium">Ingest Notes</span>
                         </a>
-                        <a href="/sources" class="flex items-center gap-2 px-4 py-2.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors no-underline">
-                            <svg class="w-3.5 h-3.5 shrink-0" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                            Sources Archive
+                        <a href="/sources" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100 transition-colors no-underline whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5 shrink-0 text-stone-500" width="14" height="14" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                            <span class="font-medium">Sources Archive</span>
                         </a>
                     </div>
                 </div>
@@ -90,7 +91,7 @@
                     <span class="text-xs text-stone-400 dark:text-stone-500 font-mono hidden md:inline truncate max-w-[120px]" title="{{ user.email }}">{{ user.email }}</span>
                     <a href="/logout"
                         hx-boost="false"
-                        class="text-xs text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 no-underline transition-colors py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900"
+                        class="text-xs text-stone-500 hover:text-rose-700 dark:hover:text-rose-400 no-underline transition-colors py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900"
                         title="Sign Out">Sign Out</a>
                 </div>
                 {% endif %}
@@ -156,7 +157,7 @@
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Sources</a>
                 <a href="/logout"
                     hx-boost="false"
-                    class="text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors no-underline py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900">Sign Out</a>
+                    class="text-stone-500 hover:text-rose-700 dark:hover:text-rose-400 transition-colors no-underline py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900">Sign Out</a>
                 {% else %}
                 <a href="/sign-in"
                     hx-boost="false"

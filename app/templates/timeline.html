@@ -28,53 +28,105 @@
       <!-- Items in this day -->
       <div class="space-y-16">
         {% for item in day.entries %}
-        <article class="timeline-item group relative" id="{{ item.id }}">
-
-          <!-- Metadata row: Type badge, domain, connections -->
+        {% if item.item_type == 'link' %}
+        <!-- Curated Link Entry -->
+        <article class="timeline-item timeline-link group relative p-5 rounded-xl border border-stone-200/90 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 hover:border-stone-300 dark:hover:border-stone-700 transition-all shadow-xs" id="{{ item.id }}">
+          <!-- Metadata row -->
           <div class="flex items-center gap-2 mb-2 text-xs font-mono">
-            <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase
-              {% if item.item_type == 'riff' %}bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60
-              {% elif item.item_type == 'link' %}bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60
-              {% else %}bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60{% endif %}">
-              {{ item.item_type }}
+            <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60">
+              link
             </span>
 
             {% if item.domain %}
-            <a href="{{ item.canonical_url }}" target="_blank" rel="noopener noreferrer" class="text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors inline-flex items-center gap-1">
+            <a href="{{ item.canonical_url or '#' }}" target="_blank" rel="noopener noreferrer" class="text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 transition-colors inline-flex items-center gap-1 font-mono text-xs no-underline">
               <span>{{ item.domain }}</span>
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
             </a>
             {% endif %}
 
             {% if item.edges %}
-            <a href="/i/{{ item.id }}" class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors tabular-nums" title="{{ item.edges|length }} connections">
-              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            <a href="/i/{{ item.id }}" class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors tabular-nums no-underline" title="{{ item.edges|length }} connections">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
               <span class="text-xs">{{ item.edges|length }}</span>
             </a>
             {% endif %}
           </div>
 
           <!-- Title -->
-          <h3 class="text-xl font-serif font-medium text-stone-900 dark:text-stone-100 hover:text-pink-600 dark:hover:text-pink-400 transition-colors leading-snug mb-3">
+          <h3 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors leading-snug mb-2" style="font-family:'Newsreader',serif;font-weight:500;">
             <a href="/i/{{ item.id }}" class="no-underline">
               {{ item.title }}
             </a>
           </h3>
 
-          <!-- Excerpt quote if link or note premise -->
+          <!-- Excerpt quote if present -->
           {% if item.summary %}
-          <blockquote class="border-l-2 border-stone-300 dark:border-stone-700 pl-4 py-1 my-3 text-sm text-stone-600 dark:text-stone-400 italic font-serif leading-relaxed">
+          <blockquote class="border-l-2 border-sky-300 dark:border-sky-800 pl-3.5 py-1 my-2.5 text-xs text-stone-600 dark:text-stone-400 italic font-serif leading-relaxed bg-white/60 dark:bg-stone-900/60 rounded-r">
             {{ item.summary }}
           </blockquote>
           {% endif %}
 
-          <!-- Commentary / Rendered HTML -->
+          <!-- Commentary -->
           {% if item.commentary %}
-          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-3">
+          <div class="text-sm font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-2">
             {{ item.commentary }}
           </div>
           {% elif item.content_html %}
-          <div class="prose prose-stone dark:prose-invert max-w-none text-sm font-serif leading-relaxed my-3">
+          <div class="prose prose-stone dark:prose-invert max-w-none text-sm font-serif leading-relaxed my-2">
+            {{ item.content_html | safe }}
+          </div>
+          {% endif %}
+
+          <!-- Tags -->
+          {% if item.tags %}
+          <div class="flex flex-wrap gap-1.5 mt-3">
+            {% for tag in item.tags %}
+            <span class="text-[11px] font-mono text-stone-400 dark:text-stone-500">#{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </article>
+
+        {% else %}
+        <!-- Original Riff / Essay Entry -->
+        <article class="timeline-item timeline-riff group relative py-2" id="{{ item.id }}">
+          <!-- Metadata row -->
+          <div class="flex items-center gap-2 mb-2 text-xs font-mono">
+            <span class="px-2 py-0.5 rounded text-[11px] font-medium tracking-wide uppercase
+              {% if item.item_type == 'riff' %}bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60
+              {% else %}bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60{% endif %}">
+              {{ item.item_type }}
+            </span>
+
+            {% if item.edges %}
+            <a href="/i/{{ item.id }}" class="ml-auto inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors tabular-nums no-underline" title="{{ item.edges|length }} connections">
+              <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <span class="text-xs">{{ item.edges|length }}</span>
+            </a>
+            {% endif %}
+          </div>
+
+          <!-- Riff Display Heading -->
+          <h3 class="text-2xl font-['Newsreader'] font-normal text-stone-900 dark:text-stone-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors leading-tight mb-3" style="font-family:'Newsreader',serif;font-weight:400;">
+            <a href="/i/{{ item.id }}" class="no-underline">
+              {{ item.title }}
+            </a>
+          </h3>
+
+          <!-- Summary / Premise -->
+          {% if item.summary %}
+          <div class="text-sm font-serif text-stone-600 dark:text-stone-400 italic leading-relaxed mb-3">
+            {{ item.summary }}
+          </div>
+          {% endif %}
+
+          <!-- Full Prose Content -->
+          {% if item.commentary %}
+          <div class="text-base font-serif text-stone-800 dark:text-stone-200 leading-relaxed my-3 max-w-[68ch]">
+            {{ item.commentary }}
+          </div>
+          {% elif item.content_html %}
+          <div class="prose prose-stone dark:prose-invert max-w-[68ch] text-base font-serif leading-relaxed my-3">
             {{ item.content_html | safe }}
           </div>
           {% endif %}
@@ -87,8 +139,8 @@
             {% endfor %}
           </div>
           {% endif %}
-
         </article>
+        {% endif %}
         {% endfor %}
       </div>
     </section>

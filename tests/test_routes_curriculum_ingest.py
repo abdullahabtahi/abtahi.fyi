@@ -205,3 +205,12 @@ def test_semantic_search_returns_live_results(study_client):
     assert "Declarative Attention in Autonomous Systems" in resp.text
 
 
+def test_seed_sample_curriculum_endpoint(study_client):
+    client, store = study_client
+    resp = client.post("/api/study/seed-sample", headers={"HX-Request": "true"})
+    assert resp.status_code == 200
+    assert resp.headers.get("HX-Redirect") == "/study"
+    assert len(store.concepts) > 0
+    assert "M1L1" in store.modules
+
+
