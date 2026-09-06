@@ -11,7 +11,7 @@
 [![Architecture](https://img.shields.io/badge/Well--Architected-Security_by_Design-0F9D58?logo=googlecloud&logoColor=white)](#-well-architected-cloud--security-posture)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[**🌐 Live Cloud Run Deployment**](https://abtahi-fyi-qvj33q6t2a-uc.a.run.app) • [**📖 Architecture & Design**](#-system-architecture--two-plane-isolation) • [**⚡ Quickstart**](#-local-development--testing) • [**🛡️ Security Posture**](#-well-architected-cloud--security-posture)
+[**🌐 Live Cloud Run Deployment**](https://abtahi-fyi-qvj33q6t2a-uc.a.run.app) • [**🎥 Video Walkthrough (YouTube)**](https://www.youtube.com/watch?v=L7d-ylQFIp8) • [**📝 Story & Deep Dive (Medium)**](https://medium.com/@abdullahabtahi21/why-economics-taught-me-gradient-descent-3179ede4d28d) • [**🛡️ Security Posture**](#-well-architected-cloud--security-posture)
 
 </div>
 
@@ -32,8 +32,10 @@ I tend to explore multiple technical domains (AI/ML, economic complexity, distri
 ---
 
 <div align="center">
-  <img src="assets/plates/figure1.gif" alt="abtahi.fyi Interactive Study Map and Today Review Queue" width="850" />
-  <p><em>Figure 1: Interactive Canvas 2D Knowledge Graph and the Bounded Daily Review Queue.</em></p>
+  <a href="https://www.youtube.com/watch?v=L7d-ylQFIp8" target="_blank" rel="noopener noreferrer">
+    <img src="assets/plates/figure1.gif" alt="abtahi.fyi Interactive Study Map and Today Review Queue - Watch Video Demo" width="850" />
+  </a>
+  <p><em>Figure 1: Interactive Canvas 2D Knowledge Graph and the Bounded Daily Review Queue (Click image to watch demo video on YouTube).</em></p>
 </div>
 
 ---
