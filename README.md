@@ -160,9 +160,91 @@ Navigate to `http://127.0.0.1:8000/` to explore the local instance.
 
 ---
 
+## ☁️ Google Cloud Configuration & Deployment
+
+Set your environment variables:
+```bash
+export GCP_PROJECT_ID="YOUR_GCP_PROJECT_ID"
+export GCP_REGION="us-central1"
+```
+
+### 1. Enable Required Google Cloud APIs
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  secretmanager.googleapis.com \
+  firestore.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudscheduler.googleapis.com \
+  --project="${GCP_PROJECT_ID}"
+```
+
+### 2. Secret Manager Provisioning & IAM Access
+```bash
+# Create and populate runtime secrets
+gcloud secrets create GEMINI_API_KEY --replication-policy="automatic" --project="${GCP_PROJECT_ID}"
+echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets versions add GEMINI_API_KEY --data-file=- --project="${GCP_PROJECT_ID}"
+
+gcloud secrets create CSRF_SECRET --replication-policy="automatic" --project="${GCP_PROJECT_ID}"
+echo -n "$(openssl rand -hex 32)" | gcloud secrets versions add CSRF_SECRET --data-file=- --project="${GCP_PROJECT_ID}"
+
+# Grant Cloud Run runtime service account access to read secrets
+PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project="${GCP_PROJECT_ID}"
+
+gcloud secrets add-iam-policy-binding CSRF_SECRET \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project="${GCP_PROJECT_ID}"
+```
+
+### 3. Database Security Configuration (`firestore.rules`)
+Deploy the zero-trust Firestore security rules:
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All Firestore reads and writes are strictly mediated server-side
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+### 4. Cloud Run Deployment & Campaign Verification
+Deploy the container with the mandatory challenge label for automated campaign verification:
+```bash
+gcloud run deploy abtahi-fyi \
+  --source . \
+  --region "${GCP_REGION}" \
+  --project "${GCP_PROJECT_ID}" \
+  --allow-unauthenticated \
+  --port 8080 \
+  --labels dev-tutorial=cloud-run-ai-challenge \
+  --set-env-vars="GCP_PROJECT_ID=${GCP_PROJECT_ID},GCP_LOCATION=${GCP_REGION},ENV=production" \
+  --set-secrets="CSRF_SECRET=CSRF_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
+```
+
+Or apply/verify the label on an existing deployment:
+```bash
+gcloud run services update abtahi-fyi \
+  --update-labels=dev-tutorial=cloud-run-ai-challenge \
+  --region="${GCP_REGION}" \
+  --project="${GCP_PROJECT_ID}"
+```
+
+---
+
 ## 🚀 Production Deployment & Release Verification
 
-The production service is deployed to **Google Cloud Run** using automated verification scripts:
+The production service can also be deployed using the automated release scripts:
 
 ```bash
 # Deploy zero-trust Firestore security rules
@@ -192,6 +274,6 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE). #AccelerateAIwithCloudRun
 
 
