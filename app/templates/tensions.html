@@ -16,7 +16,61 @@
     </p>
   </header>
 
-  <!-- Tension Cards List -->
+  <!-- Triangular Contradiction Cycles Section -->
+  {% if triangular_tensions %}
+  <section class="mb-14">
+    <div class="flex items-center gap-2 mb-6">
+      <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+      <h2 class="text-xs font-mono uppercase tracking-widest text-stone-500 dark:text-stone-400 font-semibold">
+        Triangular Contradiction Triads ({{ triangular_tensions|length }})
+      </h2>
+    </div>
+
+    <div class="space-y-6">
+      {% for triad in triangular_tensions %}
+      <article class="p-6 rounded-xl border-2 border-rose-200/80 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 shadow-sm relative">
+        <div class="flex items-center justify-between gap-2 mb-3 text-xs font-mono">
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide bg-rose-100 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700/60">
+            3-Cycle Contradiction
+          </span>
+          <span class="text-stone-400 dark:text-stone-500 text-[11px]">
+            Confidence: {{ (triad.confidence * 100)|round }}%
+          </span>
+        </div>
+
+        <!-- 3-Node Cycle Flow -->
+        <div class="my-4 p-3.5 rounded-lg bg-white/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 font-mono text-xs space-y-2">
+          <div class="flex items-center gap-2 text-stone-700 dark:text-stone-300">
+            <a href="/i/{{ triad.node_a }}" class="font-semibold text-stone-900 dark:text-stone-100 hover:underline">{{ triad.node_a }}</a>
+            <span class="text-stone-400">&rarr; <span class="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">{{ triad.edge_ab_type }}</span> &rarr;</span>
+            <a href="/i/{{ triad.node_b }}" class="font-semibold text-stone-900 dark:text-stone-100 hover:underline">{{ triad.node_b }}</a>
+          </div>
+          <div class="flex items-center gap-2 text-stone-700 dark:text-stone-300 pl-4 border-l border-stone-300 dark:border-stone-700">
+            <span class="text-stone-400">&rarr; <span class="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">{{ triad.edge_bc_type }}</span> &rarr;</span>
+            <a href="/i/{{ triad.node_c }}" class="font-semibold text-stone-900 dark:text-stone-100 hover:underline">{{ triad.node_c }}</a>
+          </div>
+          <div class="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold pl-8 border-l-2 border-rose-500">
+            <span>&larr; <span class="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400">{{ triad.edge_ca_type }}</span> &larr;</span>
+            <span>Loops back to {{ triad.node_a }}</span>
+          </div>
+        </div>
+
+        <p class="text-xs font-serif text-stone-700 dark:text-stone-300 leading-relaxed italic">
+          {{ triad.contradiction_summary }}
+        </p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Pairwise Tension Cards List -->
+  <div class="flex items-center gap-2 mb-6">
+    <h2 class="text-xs font-mono uppercase tracking-widest text-stone-500 dark:text-stone-400 font-semibold">
+      Pairwise Intellectual Challenges ({{ tensions|length }})
+    </h2>
+  </div>
+
   <div class="space-y-10">
     {% for tension in tensions %}
     <article class="tension-card p-6 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/40 shadow-sm relative">

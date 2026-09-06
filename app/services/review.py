@@ -92,6 +92,32 @@ class ReviewService:
     ) -> ReviewResult | None:
         return await self.store.get_operation(identity.uid, key)
 
+    def reinforce_connection(
+        self,
+        source_id: str,
+        target_id: str,
+        boost: float = 0.05,
+        network_cache: object | None = None,
+    ) -> bool:
+        """
+        Reinforces an active graph connection cited or approved in study review.
+        Boosts edge confidence by +boost (capped at 1.0) and sets last_reinforced_at.
+        """
+        if network_cache is None:
+            from app.core.network import network_cache as default_cache
+            cache = default_cache
+        else:
+            cache = network_cache
+
+        if hasattr(cache, "G") and cache.G.has_edge(source_id, target_id):
+            edge_data = cache.G[source_id][target_id]
+            curr_conf = float(edge_data.get("confidence", 1.0))
+            new_conf = round(min(1.0, curr_conf + boost), 4)
+            edge_data["confidence"] = new_conf
+            edge_data["last_reinforced_at"] = self.now().isoformat()
+            return True
+        return False
+
     @staticmethod
     def _digest(payload: dict) -> str:
         normalized = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))

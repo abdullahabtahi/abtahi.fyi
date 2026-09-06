@@ -23,10 +23,39 @@ async def poll_feeds(request: Request, identity: Identity = Depends(require_iden
         },
     )
 
-@router.post("/api/consolidate")
-async def consolidate_graph(request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf)):
-    # Triggers Nightly Synthesis Cycle
+from app.schemas.synthesis import ConsolidationReport, ConsolidationStatus
+from app.ai.synthesis import run_consolidation
+from app.core.network import network_cache
+from app.core.db import init_sqlite_db
+
+@router.post("/api/consolidate", response_model=ConsolidationReport)
+async def consolidate_graph(
+    request: Request,
+    dry_run: bool = False,
+    identity: Identity = Depends(require_identity),
+):
+    """Triggers Nightly Graph Consolidation ('Dream Cycle').
+    
+    Supports dry-run queries and returns a full ConsolidationReport.
+    Protected by admin authentication / Cloud Scheduler bearer tokens.
+    """
+    conn = init_sqlite_db()
+    try:
+        report = await run_consolidation(
+            db_conn=conn,
+            network_cache=network_cache,
+            dry_run=dry_run,
+        )
+    finally:
+        conn.close()
+
+    if report.status == ConsolidationStatus.FAILED:
+        return JSONResponse(
+            status_code=500,
+            content=report.model_dump(mode="json"),
+        )
     return JSONResponse(
-        status_code=202,
-        content={"status": "accepted", "message": "Graph synthesis started."}
+        status_code=200,
+        content=report.model_dump(mode="json"),
     )
+

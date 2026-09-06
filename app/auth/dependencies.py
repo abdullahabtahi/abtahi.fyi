@@ -22,12 +22,17 @@ def get_allowed_email() -> str:
     return Settings().ALLOWLISTED_EMAIL
 
 def require_identity(request: Request, verifier: TokenVerifier = Depends(get_token_verifier), allowed_email: str = Depends(get_allowed_email)) -> Identity:
-    session_cookie = request.cookies.get("session")
-    if not session_cookie:
+    token = request.cookies.get("session")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+
+    if not token:
         raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/sign-in"})
 
     try:
-        return verify_allowlisted_identity(verifier, session_cookie, allowed_email)
+        return verify_allowlisted_identity(verifier, token, allowed_email)
     except ForbiddenError:
         # Check if the request is an API request (JSON expected) or browser request
         accept = request.headers.get("accept", "")

@@ -5,6 +5,9 @@ from app.schemas.feeds import JSONFeed, JSONFeedItem, FyiExtensions
 from app.core.public_loader import PublicContentLoader
 from app.core.network import network_cache
 import os
+import glob
+import frontmatter
+from datetime import datetime, timezone
 
 router = APIRouter(tags=["Syndication"])
 
@@ -228,15 +231,74 @@ async def get_connected(request: Request):
 
 @router.get("/tensions", response_class=HTMLResponse)
 async def get_tensions(request: Request):
-    items = loader.load_all_items()
-    network_cache.load_from_items(items)
+    if len(network_cache.G) == 0:
+        items = loader.load_all_items()
+        network_cache.load_from_items(items)
     tensions = network_cache.extract_intellectual_tensions()
+    triangular_tensions = network_cache.detect_triangular_contradictions()
     
     return templates.TemplateResponse(
         request=request, name="tensions.html", context={
-            "tensions": tensions
+            "tensions": tensions,
+            "triangular_tensions": triangular_tensions,
         }
     )
+
+@router.get("/api/tensions")
+async def get_api_tensions(triangular: bool = False):
+    """
+    Returns active intellectual contradictions across the knowledge graph.
+    If triangular=true, returns length-3 contradiction triads (A -> B -> C -> A).
+    """
+    if triangular:
+        triads = network_cache.detect_triangular_contradictions()
+        return JSONResponse(content=[t.model_dump(mode="json") for t in triads])
+    else:
+        tensions = network_cache.extract_intellectual_tensions()
+        return JSONResponse(content=[t.model_dump(mode="json") for t in tensions])
+
+@router.get("/api/inquiries")
+async def get_api_inquiries(status: str = "active"):
+    """
+    Returns frontier perimeter Socratic inquiries formulated by the synthesis engine.
+    Strictly bounded to max 3 active items.
+    """
+    inquiries_dir = os.path.join(loader.content_dir, "inquiries")
+    archive_dir = os.path.join(inquiries_dir, "archive")
+    records = []
+
+    search_dirs = []
+    if status in ("active", "all"):
+        search_dirs.append((inquiries_dir, "active"))
+    if status in ("resolved", "archived", "all"):
+        search_dirs.append((archive_dir, "resolved"))
+
+    for s_dir, default_st in search_dirs:
+        if not os.path.exists(s_dir):
+            continue
+        for fpath in glob.glob(os.path.join(s_dir, "*.md")):
+            if default_st == "active" and "archive" in fpath:
+                continue
+            try:
+                post = frontmatter.load(fpath)
+                rec = {
+                    "id": post.metadata.get("id", os.path.splitext(os.path.basename(fpath))[0]),
+                    "target_concept": post.metadata.get("target_concept", ""),
+                    "question": post.content.strip(),
+                    "rationale": post.metadata.get("rationale", ""),
+                    "status": post.metadata.get("status", default_st),
+                    "created_at": post.metadata.get("created_at", datetime.now(timezone.utc).isoformat()),
+                    "resolved_at": post.metadata.get("resolved_at"),
+                }
+                if status == "all" or rec["status"] == status:
+                    records.append(rec)
+            except Exception as e:
+                pass
+
+    if status == "active":
+        records = records[:3]
+
+    return JSONResponse(content=records)
 
 @router.get("/themes", response_class=HTMLResponse)
 async def get_themes(request: Request):

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import hashlib
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Set, Tuple, Any
 import networkx as nx
@@ -10,6 +11,7 @@ from app.schemas.feeds import (
     EdgeType,
     EdgeDirection,
 )
+from app.schemas.synthesis import TriangularTensionRecord
 
 class NetworkScienceCache:
     """
@@ -163,6 +165,48 @@ class NetworkScienceCache:
             return {}
         return nx.betweenness_centrality(self.G)
 
+    def compute_cluster_hash(self, member_ids: list[str] | set[str]) -> str:
+        """
+        Computes a deterministic 12-char SHA-256 cluster hash for a set of member IDs.
+        """
+        sorted_ids = sorted(list(member_ids))
+        hasher = hashlib.sha256()
+        for mid in sorted_ids:
+            hasher.update(mid.encode("utf-8"))
+            node_data = self.G.nodes.get(mid, {})
+            hasher.update(str(node_data.get("title", "")).encode("utf-8"))
+        return hasher.hexdigest()[:12]
+
+    def extract_louvain_communities(self, min_size: int = 3, seed: int = 42) -> list[dict]:
+        """
+        Detects Louvain communities on the undirected projection of self.G.
+        Filters for communities with size >= min_size (default 3).
+        Returns list of dicts with community_id, size, members (sorted), and cluster_hash.
+        """
+        if not self.G or len(self.G) < min_size:
+            return []
+
+        G_un = self.G.to_undirected()
+        G_un.remove_edges_from(nx.selfloop_edges(G_un))
+        
+        try:
+            raw_communities = nx.community.louvain_communities(G_un, seed=seed)
+        except Exception:
+            return []
+
+        valid_communities = []
+        for idx, comm in enumerate(raw_communities):
+            if len(comm) >= min_size:
+                members = sorted(list(comm))
+                c_hash = self.compute_cluster_hash(members)
+                valid_communities.append({
+                    "community_id": idx,
+                    "size": len(members),
+                    "members": members,
+                    "cluster_hash": c_hash,
+                })
+        return valid_communities
+
     def _compute_communities(self) -> list[set[str]]:
         if not self.G:
             return []
@@ -201,6 +245,168 @@ class NetworkScienceCache:
                     )
                 )
         return tensions
+
+    def calculate_edge_decay(self, as_of_date: datetime | None = None) -> list[dict]:
+        """
+        Calculates temporal confidence decay for active edges:
+        - Edges older than 90 days without citations decay:
+          - 5% standard (conf * 0.95)
+          - 2.5% for challenges (conf * 0.975)
+          - 0% for superseded_by (permanently exempt)
+        - Edges below 0.30 are marked for pruning (is_pruned = True)
+        """
+        now = as_of_date or datetime.now(timezone.utc)
+        results = []
+
+        for u, v, data in self.G.edges(data=True):
+            edge_type = str(data.get("edge_type", "related_to"))
+            conf = float(data.get("confidence", 1.0))
+
+            if edge_type == "superseded_by":
+                results.append({
+                    "source": u,
+                    "target": v,
+                    "edge_type": edge_type,
+                    "old_confidence": conf,
+                    "new_confidence": conf,
+                    "is_pruned": False,
+                    "created_at": data.get("created_at"),
+                    "last_reinforced_at": data.get("last_reinforced_at"),
+                })
+                continue
+
+            last_ts_raw = data.get("last_reinforced_at") or data.get("created_at")
+            if last_ts_raw:
+                if isinstance(last_ts_raw, str):
+                    try:
+                        last_ts = datetime.fromisoformat(last_ts_raw.replace("Z", "+00:00"))
+                    except Exception:
+                        last_ts = now
+                elif isinstance(last_ts_raw, datetime):
+                    last_ts = last_ts_raw
+                else:
+                    last_ts = now
+            else:
+                last_ts = now
+
+            if last_ts.tzinfo is None:
+                last_ts = last_ts.replace(tzinfo=timezone.utc)
+
+            age_days = (now - last_ts).days
+            if age_days > 90:
+                if edge_type in ("challenges", "contradicts"):
+                    new_conf = round(max(0.0, conf * 0.975), 4)
+                else:
+                    new_conf = round(max(0.0, conf * 0.95), 4)
+            else:
+                new_conf = conf
+
+            is_pruned = new_conf < 0.30
+            results.append({
+                "source": u,
+                "target": v,
+                "edge_type": edge_type,
+                "old_confidence": conf,
+                "new_confidence": new_conf,
+                "is_pruned": is_pruned,
+                "created_at": data.get("created_at"),
+                "last_reinforced_at": data.get("last_reinforced_at"),
+            })
+
+        return results
+
+    def detect_triangular_contradictions(self) -> list[TriangularTensionRecord]:
+        """
+        Identifies length-3 directed cycles (A -> B -> C -> A) containing at least
+        one 'challenges' edge and at least one 'supports' or 'develops_into' edge.
+        """
+        triads: list[TriangularTensionRecord] = []
+        if not self.G or len(self.G) < 3:
+            return triads
+
+        seen_triads: set[frozenset[str]] = set()
+
+        try:
+            cycles = nx.simple_cycles(self.G, length_bound=3)
+        except TypeError:
+            cycles = [c for c in nx.simple_cycles(self.G) if len(c) == 3]
+
+        for cycle in cycles:
+            if len(cycle) != 3:
+                continue
+
+            a, b, c = cycle[0], cycle[1], cycle[2]
+            key = frozenset([a, b, c])
+            if key in seen_triads:
+                continue
+            seen_triads.add(key)
+
+            e_ab = self.G[a][b].get("edge_type", "related_to")
+            e_bc = self.G[b][c].get("edge_type", "related_to")
+            e_ca = self.G[c][a].get("edge_type", "related_to")
+            types = [e_ab, e_bc, e_ca]
+
+            if "challenges" in types and any(t in ("supports", "develops_into") for t in types):
+                node_a_title = self.G.nodes.get(a, {}).get("title", a)
+                node_b_title = self.G.nodes.get(b, {}).get("title", b)
+                node_c_title = self.G.nodes.get(c, {}).get("title", c)
+
+                triad_id = f"triad-{hashlib.sha256(f'{sorted([a, b, c])}'.encode()).hexdigest()[:8]}"
+                summary = f"Dialectical contradiction cycle between {node_a_title}, {node_b_title}, and {node_c_title}."
+                triads.append(
+                    TriangularTensionRecord(
+                        triad_id=triad_id,
+                        node_a=a,
+                        node_b=b,
+                        node_c=c,
+                        edge_ab_type=e_ab,
+                        edge_bc_type=e_bc,
+                        edge_ca_type=e_ca,
+                        contradiction_summary=summary,
+                        confidence=0.88,
+                        detected_at=datetime.now(timezone.utc),
+                    )
+                )
+
+        return triads
+
+    def find_frontier_concepts(self, pagerank_percentile: float = 0.75, max_supports: int = 2) -> list[dict]:
+        """
+        Identifies concepts on the graph perimeter with high PageRank authority
+        (>= 75th percentile) but lacking empirical grounding (< 2 supports in-degree).
+        """
+        if not self.G:
+            return []
+
+        pr = self.get_pagerank() or self._compute_pagerank()
+        if not pr:
+            return []
+
+        scores = sorted(pr.values())
+        cutoff_idx = int(len(scores) * pagerank_percentile)
+        threshold = scores[min(cutoff_idx, len(scores) - 1)] if scores else 0.0
+
+        frontier = []
+        for node, score in sorted(pr.items(), key=lambda x: x[1], reverse=True):
+            if score < threshold:
+                continue
+
+            supports_in = 0
+            for _, _, data in self.G.in_edges(node, data=True):
+                if data.get("edge_type") in ("supports", "application_of", "example_of"):
+                    supports_in += 1
+
+            if supports_in < max_supports:
+                node_data = self.G.nodes.get(node, {})
+                frontier.append({
+                    "id": node,
+                    "title": node_data.get("title", node),
+                    "summary": node_data.get("summary", ""),
+                    "pagerank": round(score, 4),
+                    "supports_in": supports_in,
+                })
+
+        return frontier
 
     def _build_snapshot(self) -> GraphSnapshot:
         """

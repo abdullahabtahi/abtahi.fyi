@@ -1,0 +1,152 @@
+{
+  "nodes": [
+    {
+      "id": "node-net-1",
+      "type": "concept",
+      "title": "Feedback Loops in Distributed Systems",
+      "summary": "Non-linear positive feedback dynamics in high-throughput message queues.",
+      "date": "2026-05-01T10:00:00Z"
+    },
+    {
+      "id": "node-net-2",
+      "type": "note",
+      "title": "Circuit Breaker Pattern in Microservices",
+      "summary": "Decoupling cascaded failure states using circuit breakers.",
+      "date": "2026-05-05T11:00:00Z"
+    },
+    {
+      "id": "node-net-3",
+      "type": "link",
+      "title": "Backpressure Buffering Dynamics",
+      "canonical_url": "https://eebench.org/",
+      "domain": "eebench.org",
+      "summary": "Empirical study on buffer backpressure under burst traffic.",
+      "date": "2026-05-10T09:00:00Z"
+    },
+    {
+      "id": "node-triad-a",
+      "type": "concept",
+      "title": "Static Vector Partitioning",
+      "summary": "Partitioning dense embedding spaces into discrete static hyperplanes.",
+      "date": "2026-06-01T08:00:00Z"
+    },
+    {
+      "id": "node-triad-b",
+      "type": "note",
+      "title": "Hierarchical K-Means Indexing",
+      "summary": "Using hierarchical centroid trees to prune nearest neighbor traversal.",
+      "date": "2026-06-05T09:00:00Z"
+    },
+    {
+      "id": "node-triad-c",
+      "type": "concept",
+      "title": "Boundary Miss Penalties in ANN",
+      "summary": "Severe recall degradation caused by boundary crosses in static partitions.",
+      "date": "2026-06-10T12:00:00Z"
+    },
+    {
+      "id": "node-frontier-1",
+      "type": "concept",
+      "title": "Declarative Attention Orchestration",
+      "summary": "Attention kernels compiled directly into hardware memory pipelines.",
+      "date": "2026-08-20T14:00:00Z"
+    },
+    {
+      "id": "node-frontier-hub",
+      "type": "concept",
+      "title": "Autonomous Query Topology",
+      "summary": "Central coordinating framework for self-assembling multi-agent graphs.",
+      "date": "2026-08-22T16:00:00Z"
+    }
+  ],
+  "edges": [
+    {
+      "source": "node-net-1",
+      "target": "node-net-2",
+      "type": "supports",
+      "confidence": 0.85,
+      "created_at": "2026-05-02T10:00:00Z",
+      "last_reinforced_at": "2026-05-02T10:00:00Z"
+    },
+    {
+      "source": "node-net-2",
+      "target": "node-net-3",
+      "type": "supports",
+      "confidence": 0.90,
+      "created_at": "2026-05-06T11:00:00Z",
+      "last_reinforced_at": "2026-05-06T11:00:00Z"
+    },
+    {
+      "source": "node-net-3",
+      "target": "node-net-1",
+      "type": "supports",
+      "confidence": 0.88,
+      "created_at": "2026-05-11T09:00:00Z",
+      "last_reinforced_at": "2026-05-11T09:00:00Z"
+    },
+    {
+      "source": "node-triad-a",
+      "target": "node-triad-b",
+      "type": "supports",
+      "confidence": 0.95,
+      "created_at": "2026-06-02T08:00:00Z",
+      "last_reinforced_at": "2026-06-02T08:00:00Z"
+    },
+    {
+      "source": "node-triad-b",
+      "target": "node-triad-c",
+      "type": "supports",
+      "confidence": 0.92,
+      "created_at": "2026-06-06T09:00:00Z",
+      "last_reinforced_at": "2026-06-06T09:00:00Z"
+    },
+    {
+      "source": "node-triad-c",
+      "target": "node-triad-a",
+      "type": "challenges",
+      "confidence": 0.89,
+      "created_at": "2026-06-11T12:00:00Z",
+      "last_reinforced_at": "2026-06-11T12:00:00Z"
+    },
+    {
+      "source": "node-frontier-hub",
+      "target": "node-frontier-1",
+      "type": "supports",
+      "confidence": 0.75,
+      "created_at": "2026-08-25T10:00:00Z",
+      "last_reinforced_at": "2026-08-25T10:00:00Z"
+    },
+    {
+      "source": "node-net-1",
+      "target": "node-frontier-hub",
+      "type": "supports",
+      "confidence": 0.80,
+      "created_at": "2026-08-26T12:00:00Z",
+      "last_reinforced_at": "2026-08-26T12:00:00Z"
+    },
+    {
+      "source": "node-triad-a",
+      "target": "node-frontier-hub",
+      "type": "supports",
+      "confidence": 0.82,
+      "created_at": "2026-08-27T14:00:00Z",
+      "last_reinforced_at": "2026-08-27T14:00:00Z"
+    },
+    {
+      "source": "node-net-3",
+      "target": "node-triad-b",
+      "type": "superseded_by",
+      "confidence": 0.40,
+      "created_at": "2026-05-01T00:00:00Z",
+      "last_reinforced_at": "2026-05-01T00:00:00Z"
+    },
+    {
+      "source": "node-triad-c",
+      "target": "node-net-2",
+      "type": "supports",
+      "confidence": 0.31,
+      "created_at": "2026-04-01T00:00:00Z",
+      "last_reinforced_at": "2026-04-01T00:00:00Z"
+    }
+  ]
+}
