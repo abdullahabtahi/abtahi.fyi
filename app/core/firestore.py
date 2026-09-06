@@ -462,3 +462,19 @@ class FirestoreConceptStore:
 
         await asyncio.to_thread(write)
 
+    async def list_sources(self, uid: str) -> list[dict]:
+        def fetch():
+            docs = self._sources(uid).stream()
+            sources = [d.to_dict() for d in docs]
+            sources.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+            return sources
+
+        return await asyncio.to_thread(fetch)
+
+    async def get_source(self, uid: str, source_id: str) -> dict | None:
+        def fetch():
+            doc = self._sources(uid).document(source_id).get()
+            return doc.to_dict() if doc.exists else None
+
+        return await asyncio.to_thread(fetch)
+

@@ -42,12 +42,16 @@ class InMemoryConceptStore:
     async def save_source(self, uid: str, source_id: str, data: dict) -> None:
         self.sources[source_id] = data
 
+    async def list_sources(self, uid: str) -> list[dict]:
+        return list(self.sources.values())
+
 
 @pytest.fixture
 def study_client():
     app = create_app()
     concept_store = InMemoryConceptStore()
     review_store = AsyncMock()
+    review_store.get_pending_proposals.return_value = []
 
     app.dependency_overrides[require_identity] = lambda: Identity(
         uid="test-user", email="test@example.com"
@@ -146,4 +150,58 @@ def test_unauthenticated_study_routes_redirect_to_signin():
         follow_redirects=False,
     )
     assert resp_post.status_code in {303, 403}
+
+
+def test_authenticated_navigation_renders_study_and_today_links(study_client):
+    client, _ = study_client
+    resp = client.get("/study")
+    assert resp.status_code == 200
+    # Must have distinct links to Study Map, Today queue, and Ingest
+    assert 'href="/study"' in resp.text
+    assert 'href="/today"' in resp.text
+    assert 'href="/study/ingest"' in resp.text
+    assert "Study Map" in resp.text
+
+
+def test_today_empty_state_provides_study_ctas(study_client):
+    client, _ = study_client
+    resp = client.get("/today")
+    assert resp.status_code == 200
+    assert "No proposals queued for today" in resp.text
+    assert 'href="/study"' in resp.text
+    assert 'href="/study/ingest"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_sources_archive_view_renders_sources_and_study_links(study_client):
+    client, concept_store = study_client
+    await concept_store.save_source(
+        uid="test-user",
+        source_id="src-test-m1",
+        data={
+            "source_id": "src-test-m1",
+            "module_id": "M1L1",
+            "title": "Lecture 1: Fragility and Chokepoints",
+            "content_length": 1200,
+            "concepts_count": 3,
+            "created_at": "2026-09-06T10:00:00Z",
+        },
+    )
+
+    resp = client.get("/sources")
+    assert resp.status_code == 200
+    assert 'id="sources-archive"' in resp.text
+    assert "Lecture 1: Fragility and Chokepoints" in resp.text
+    assert 'href="/study"' in resp.text
+    assert 'href="/study/ingest"' in resp.text
+
+
+def test_semantic_search_returns_live_results(study_client):
+    client, _ = study_client
+    resp = client.get("/api/semantic?query=attention")
+    assert resp.status_code == 200
+    assert "Found 1 result" in resp.text
+    assert "/i/declarative-attention" in resp.text
+    assert "Declarative Attention in Autonomous Systems" in resp.text
+
 

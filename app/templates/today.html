@@ -4,45 +4,61 @@
 {% block meta_description %}Evidence-backed study proposals connecting current sources to WorldQuant University Module 1 concepts.{% endblock %}
 
 {% block content %}
-<div class="py-12">
+<div class="py-12 max-w-4xl mx-auto px-6">
 
-  <div class="mb-10 pb-8 border-b border-stone-200">
-    <h1 class="text-2xl font-['Bellefair'] text-stone-900 tracking-wide mb-2" style="font-family:'Bellefair',serif;font-weight:400;">
-      Today queue
-    </h1>
-    <p class="text-sm font-mono text-stone-400">
-      Up to three evidence-backed proposals for today's study session.
-    </p>
+  <!-- Header with Navigation Actions -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-10 border-b border-stone-200 dark:border-stone-800 gap-4">
+    <div>
+      <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+        Today queue
+      </h1>
+      <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
+        Up to three evidence-backed proposals for today's study session.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2.5 shrink-0">
+      <a href="/study"
+         class="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Study Map
+      </a>
+      <a href="/study/ingest"
+         class="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline shadow-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Ingest Notes
+      </a>
+    </div>
   </div>
 
   <div id="today-queue">
     <div class="proposals space-y-6">
       {% if proposals %}
         {% for proposal in proposals %}
-        <article class="p-6 rounded-xl border border-stone-200 bg-white shadow-sm" id="proposal-{{ proposal.id }}">
+        <article class="p-6 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/60 shadow-xs transition-colors" id="proposal-{{ proposal.id }}">
           <div class="flex items-start justify-between gap-4 mb-4">
-            <h2 class="text-base font-medium text-stone-900 leading-snug">{{ proposal.title }}</h2>
+            <h2 class="text-base font-medium text-stone-900 dark:text-stone-100 leading-snug">{{ proposal.title }}</h2>
             {% if proposal.cluster %}
             <span class="shrink-0 text-[11px] font-mono px-2 py-0.5 rounded border tabular-nums
-              {% if proposal.cluster == 'AI' %}text-amber-700 bg-amber-50 border-amber-200
-              {% elif proposal.cluster == 'Cloud' %}text-sky-700 bg-sky-50 border-sky-200
-              {% elif proposal.cluster == 'Complex Systems' %}text-emerald-700 bg-emerald-50 border-emerald-200
-              {% else %}text-purple-700 bg-purple-50 border-purple-200{% endif %}">
+              {% if proposal.cluster == 'AI' %}text-amber-700 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60
+              {% elif proposal.cluster == 'Cloud' %}text-sky-700 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800/60
+              {% elif proposal.cluster == 'Complex Systems' %}text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60
+              {% else %}text-purple-700 bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/60{% endif %}">
               {{ proposal.cluster }}
             </span>
             {% endif %}
           </div>
 
-          <p class="text-sm text-stone-600 leading-relaxed mb-6">{{ proposal.body }}</p>
+          <p class="text-sm text-stone-600 dark:text-stone-300 leading-relaxed mb-6">{{ proposal.body }}</p>
 
-          <div class="pt-4 border-t border-stone-100 space-y-3" data-csrf-token="{{ csrf_token }}">
-            <label class="block text-xs font-mono text-stone-500" for="reviewed-content-{{ proposal.id }}">Reviewed citation</label>
-            <textarea id="reviewed-content-{{ proposal.id }}" name="reviewed_content" class="w-full rounded border border-stone-300 p-2 text-sm" required>{{ proposal.proposed_cited_addition|default(proposal.body, true) }}</textarea>
-            <div class="flex flex-wrap gap-2">
+          <div class="pt-4 border-t border-stone-100 dark:border-stone-800 space-y-3" data-csrf-token="{{ csrf_token }}">
+            <label class="block text-xs font-mono text-stone-500 dark:text-stone-400" for="reviewed-content-{{ proposal.id }}">Reviewed citation</label>
+            <textarea id="reviewed-content-{{ proposal.id }}" name="reviewed_content" class="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 p-2.5 text-sm font-sans focus:outline-none focus:border-stone-500" required>{{ proposal.proposed_cited_addition|default(proposal.body, true) }}</textarea>
+            <div class="flex flex-wrap items-center gap-2 pt-1">
               {% for command, label in [("connect", "Connect"), ("edit", "Save edit"), ("dismiss", "Dismiss")] %}
               <button
                 type="button"
-                class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
+                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                 hx-post="/api/proposals/{{ proposal.id }}/{{ command }}"
                 hx-include="#reviewed-content-{{ proposal.id }}"
                 hx-target="#proposal-{{ proposal.id }}"
@@ -50,14 +66,14 @@
                 hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
               >{{ label }}</button>
               {% endfor %}
-              <select id="defer-window-{{ proposal.id }}" name="defer_window" class="rounded border border-stone-300 p-1 text-sm">
+              <select id="defer-window-{{ proposal.id }}" name="defer_window" class="rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 px-2 py-1.5 text-xs font-mono focus:outline-none">
                 <option value="TOMORROW">Tomorrow</option>
                 <option value="NEXT_WEEK">Next week</option>
                 <option value="LATER">Later</option>
               </select>
               <button
                 type="button"
-                class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
+                class="px-3.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                 hx-post="/api/proposals/{{ proposal.id }}/defer"
                 hx-include="#defer-window-{{ proposal.id }}"
                 hx-target="#proposal-{{ proposal.id }}"
@@ -69,9 +85,33 @@
         </article>
         {% endfor %}
       {% else %}
-      <div class="py-20 text-center">
-        <p class="text-stone-400 font-mono text-sm italic">No proposals queued for today.</p>
-        <p class="text-stone-300 font-mono text-xs mt-2">Check back tomorrow or ingest new sources.</p>
+      <!-- Actionable Empty State -->
+      <div class="border border-dashed border-stone-300 dark:border-stone-800 rounded-xl p-10 text-center bg-stone-50/50 dark:bg-stone-950/30">
+        <div class="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-900 flex items-center justify-center mx-auto mb-4 text-stone-500 dark:text-stone-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h2 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+          No proposals queued for today
+        </h2>
+        <p class="text-xs text-stone-500 dark:text-stone-400 max-w-md mx-auto mb-6 leading-relaxed">
+          Your review queue is clear. You can explore your structured curriculum map, ingest fresh course lecture notes, or inspect existing sources.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <a href="/study"
+             class="px-4 py-2 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline shadow-xs flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            Curriculum Study Map
+          </a>
+          <a href="/study/ingest"
+             class="px-4 py-2 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Ingest Course Notes
+          </a>
+          <a href="/sources"
+             class="px-4 py-2 bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors no-underline">
+            Sources Archive &rarr;
+          </a>
+        </div>
       </div>
       {% endif %}
     </div>

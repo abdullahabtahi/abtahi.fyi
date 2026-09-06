@@ -116,6 +116,7 @@ async def today_view(
         request=request,
         name="today.html",
         context={
+            "identity": identity,
             "proposals": proposals,
             "csrf_token": await _private_csrf_token(request, identity),
         },
@@ -165,6 +166,7 @@ async def study_map_view(
         request=request,
         name="study.html",
         context={
+            "identity": identity,
             "modules": modules,
             "has_concepts": bool(modules),
             "csrf_token": await _private_csrf_token(request, identity),
@@ -181,6 +183,7 @@ async def ingest_view(
         request=request,
         name="ingest.html",
         context={
+            "identity": identity,
             "csrf_token": await _private_csrf_token(request, identity),
         },
     )
@@ -440,18 +443,31 @@ async def concept_view(
         concept = parse_concept_markdown(mock_markdown, slug)
 
     return templates.TemplateResponse(
-        request=request, name="concept.html", context={"concept": concept}
+        request=request,
+        name="concept.html",
+        context={"identity": identity, "concept": concept},
     )
 
 
 @study_router.get("/sources", response_class=HTMLResponse)
 async def sources_view(
-    request: Request, identity: Identity = Depends(require_identity)
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    store: FirestoreConceptStore = Depends(get_concept_store),
 ):
+    sources = []
+    try:
+        sources = await store.list_sources(identity.uid)
+    except Exception:
+        sources = []
     return templates.TemplateResponse(
         request=request,
         name="sources.html",
-        context={"csrf_token": await _private_csrf_token(request, identity)},
+        context={
+            "identity": identity,
+            "sources": sources,
+            "csrf_token": await _private_csrf_token(request, identity),
+        },
     )
 
 

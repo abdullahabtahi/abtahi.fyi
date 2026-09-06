@@ -359,6 +359,29 @@ async def get_search(request: Request):
 
 @router.get("/api/semantic")
 async def api_semantic(query: str, request: Request):
+    from app.routers.api_public import get_db_connection, _execute_semantic_search
+
+    cleaned_query = query.strip()
+    if not cleaned_query:
+        return templates.TemplateResponse(
+            request=request,
+            name="_semantic_results.html",
+            context={"query": "", "results": [], "searched": False},
+        )
+
+    conn = get_db_connection()
+    try:
+        results, is_fallback = _execute_semantic_search(conn, cleaned_query, limit=10)
+    finally:
+        conn.close()
+
     return templates.TemplateResponse(
-        request=request, name="_semantic_results.html", context={"query": query}
+        request=request,
+        name="_semantic_results.html",
+        context={
+            "query": cleaned_query,
+            "results": results,
+            "is_fallback": is_fallback,
+            "searched": True,
+        },
     )

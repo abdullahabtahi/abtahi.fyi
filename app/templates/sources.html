@@ -1,16 +1,128 @@
-<div id="sources-archive" class="p-6 max-w-[68ch] mx-auto">
-  <h1 class="text-3xl font-newsreader font-bold mb-6">Source Archive</h1>
-  <div class="sources-list mb-8">
-    <!-- List of immutable sources -->
+{% extends "base.html" %}
+
+{% block title %}Source Archive — abtahi.fyi{% endblock %}
+{% block meta_description %}Immutable archive of ingested course notes, lecture transcripts, and learner reflections.{% endblock %}
+
+{% block content %}
+<div id="sources-archive" class="max-w-4xl mx-auto px-6 py-10">
+
+  <!-- Header with Actions -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-10 border-b border-stone-200 dark:border-stone-800 gap-4">
+    <div>
+      <h1 class="text-3xl font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 tracking-wide mb-1.5" style="font-family:'Newsreader',serif;font-weight:500;">
+        Source Archive
+      </h1>
+      <p class="text-xs font-mono text-stone-500 dark:text-stone-400">
+        Immutable repository of your ingested lecture materials, transcripts, and study reflections.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2.5 shrink-0">
+      <a href="/study"
+         class="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-stone-700 dark:text-stone-300 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Study Map
+      </a>
+      <a href="/study/ingest"
+         class="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 no-underline shadow-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Ingest Notes
+      </a>
+    </div>
   </div>
-  
-  <div class="border-t border-gray-200 pt-6 mt-8">
-    <h3 class="text-xl font-bold mb-4">Add Reflection</h3>
-    <form hx-post="/api/reflections" hx-target="#reflection-result" class="space-y-4" data-csrf-token="{{ csrf_token }}"
-      hx-headers='js:{"Idempotency-Key": this.dataset.idempotencyKey || (this.dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.dataset.csrfToken}'>
-      <textarea name="reflection_text" rows="4" class="w-full border rounded p-2 text-sm" placeholder="Reflect on your reading..."></textarea>
-      <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded text-sm font-bold">Submit</button>
+
+  <!-- Ingested Sources List -->
+  <div class="sources-list mb-12">
+    <div class="flex items-center justify-between pb-3 mb-4 border-b border-stone-100 dark:border-stone-800/80">
+      <h2 class="text-xs font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400">
+        Ingested Lecture Sources ({% if sources %}{{ sources|length }}{% else %}0{% endif %})
+      </h2>
+    </div>
+
+    {% if sources %}
+    <div class="space-y-4">
+      {% for src in sources %}
+      <article class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-mono font-medium rounded">
+              {{ src.module_id|default('M1L1') }}
+            </span>
+            <h3 class="text-base font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100">
+              {{ src.title|default('Lecture Notes') }}
+            </h3>
+          </div>
+          <div class="flex items-center gap-4 text-xs font-mono text-stone-400 dark:text-stone-500">
+            {% if src.concepts_count %}
+            <span>{{ src.concepts_count }} concepts extracted</span>
+            <span>&bull;</span>
+            {% endif %}
+            {% if src.content_length %}
+            <span>{{ src.content_length }} chars</span>
+            <span>&bull;</span>
+            {% endif %}
+            {% if src.created_at %}
+            <span>{{ src.created_at[:10] }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="shrink-0">
+          <a href="/study" class="text-xs font-mono text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 underline">
+            View on Study Map &rarr;
+          </a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty Sources State -->
+    <div class="border border-dashed border-stone-300 dark:border-stone-800 rounded-xl p-8 text-center bg-stone-50/50 dark:bg-stone-950/30">
+      <p class="text-sm font-['Newsreader'] font-medium text-stone-700 dark:text-stone-300 mb-1">
+        No lecture materials ingested yet
+      </p>
+      <p class="text-xs font-mono text-stone-400 mb-5">
+        Paste lecture notes or upload text files to populate your private knowledge base.
+      </p>
+      <a href="/study/ingest"
+         class="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors no-underline">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Ingest Course Material
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Reflection Submission -->
+  <div class="border-t border-stone-200 dark:border-stone-800 pt-8 mt-12">
+    <div class="mb-4">
+      <h3 class="text-lg font-['Newsreader'] font-medium text-stone-900 dark:text-stone-100 mb-1">
+        Add Study Reflection
+      </h3>
+      <p class="text-xs font-mono text-stone-400">
+        Capture original commentary, personal synthesis, or emergent connections from your study session.
+      </p>
+    </div>
+
+    <form hx-post="/api/reflections"
+          hx-target="#reflection-result"
+          class="space-y-4"
+          data-csrf-token="{{ csrf_token }}"
+          hx-headers='js:{"Idempotency-Key": this.dataset.idempotencyKey || (this.dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.dataset.csrfToken}'>
+      <textarea name="reflection_text"
+                rows="4"
+                class="w-full rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 p-3 text-sm font-sans placeholder-stone-400 focus:outline-none focus:border-stone-500 leading-relaxed"
+                placeholder="Write your study notes, reflections, or dialectic questions here..."
+                required></textarea>
+      <div class="flex items-center justify-between">
+        <div id="reflection-result" class="text-xs font-mono"></div>
+        <button type="submit"
+                class="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-mono uppercase tracking-wider rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors cursor-pointer shadow-xs">
+          Submit Reflection
+        </button>
+      </div>
     </form>
-    <div id="reflection-result" class="mt-4 text-green-600 font-bold"></div>
   </div>
+
 </div>
+{% endblock %}

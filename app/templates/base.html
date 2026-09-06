@@ -45,21 +45,32 @@
                 style="font-family:'Bellefair',serif;font-size:21px;">
                 abtahi.fyi
             </a>
-            <nav class="flex items-center gap-6 text-sm font-medium font-mono">
+            <nav class="flex items-center gap-4 sm:gap-6 text-sm font-medium font-mono flex-wrap">
+                {% set current_path = request.url.path if (request is defined and request.url is defined) else '' %}
                 <a href="/"
-                    class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors">Timeline</a>
+                    class="{% if current_path == '/' or current_path.startswith('/i/') %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors">Timeline</a>
                 <a href="/graph"
-                    class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors">Graph</a>
+                    class="{% if current_path == '/graph' %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors">Graph</a>
                 {% set user = request.state.identity if (request is defined and request.state is defined and request.state.identity) else (identity if identity is defined else None) %}
                 {% if user %}
+                <a href="/study"
+                    class="{% if current_path == '/study' or current_path.startswith('/concepts/') %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors"
+                    title="Curriculum Study Map">
+                    Study Map
+                </a>
                 <a href="/today"
-                    class="text-stone-900 dark:text-stone-100 font-semibold no-underline transition-colors flex items-center gap-1.5"
-                    title="Private Study Layer">
+                    class="{% if current_path == '/today' %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors flex items-center gap-1.5"
+                    title="Daily Review Proposals">
                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Study
+                    Today
+                </a>
+                <a href="/study/ingest"
+                    class="{% if current_path == '/study/ingest' %}text-stone-900 dark:text-stone-100 font-semibold{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors hidden sm:inline"
+                    title="Ingest Curriculum Material">
+                    Ingest
                 </a>
                 <div class="flex items-center gap-2 pl-2 border-l border-stone-200 dark:border-stone-800">
-                    <span class="text-xs text-stone-400 dark:text-stone-500 font-mono hidden sm:inline truncate max-w-[130px]" title="{{ user.email }}">{{ user.email }}</span>
+                    <span class="text-xs text-stone-400 dark:text-stone-500 font-mono hidden md:inline truncate max-w-[120px]" title="{{ user.email }}">{{ user.email }}</span>
                     <a href="/logout"
                         hx-boost="false"
                         class="text-xs text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 no-underline transition-colors py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900"
@@ -75,7 +86,7 @@
                 </a>
                 {% endif %}
                 <a href="/search"
-                    class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors"
+                    class="{% if current_path == '/search' %}text-stone-900 dark:text-stone-100{% else %}text-stone-500 hover:text-stone-900 dark:hover:text-stone-200{% endif %} no-underline transition-colors"
                     aria-label="Search">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -131,6 +142,10 @@
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Tensions</a>
                 <a href="/themes"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Themes</a>
+                {% if user %}
+                <a href="/sources"
+                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Sources</a>
+                {% endif %}
             </div>
         </div>
     </footer>

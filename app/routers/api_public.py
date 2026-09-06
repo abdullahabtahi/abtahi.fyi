@@ -166,6 +166,9 @@ def _execute_semantic_search(conn: sqlite3.Connection, query: str, limit: int = 
                         fallback=False,
                     )
                 )
+        if not results:
+            fts_results = _execute_fts_search(conn, query, limit=limit)
+            return [r.model_copy(update={"fallback": True}) for r in fts_results], True
         return results, False
     except Exception:
         # If vector table query fails, fallback to FTS5
