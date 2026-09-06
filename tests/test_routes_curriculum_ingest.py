@@ -123,3 +123,27 @@ A chokepoint disables the entire network.
     assert concept_resp.status_code == 200
     assert "Single Points of Failure" in concept_resp.text
     assert "A chokepoint disables the entire network" in concept_resp.text
+
+
+def test_unauthenticated_study_routes_redirect_to_signin():
+    app = create_app()
+    # Ensure NO dependency overrides for auth
+    unauthed_client = TestClient(app)
+
+    # Browser GET requests MUST redirect to /sign-in (HTTP 303)
+    resp = unauthed_client.get("/study", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/sign-in"
+
+    resp_ingest = unauthed_client.get("/study/ingest", follow_redirects=False)
+    assert resp_ingest.status_code == 303
+    assert resp_ingest.headers["location"] == "/sign-in"
+
+    # API POST requests without auth MUST redirect or reject
+    resp_post = unauthed_client.post(
+        "/api/study/ingest/preview",
+        data={"content_text": "sample", "module_id": "M1L1"},
+        follow_redirects=False,
+    )
+    assert resp_post.status_code in {303, 403}
+

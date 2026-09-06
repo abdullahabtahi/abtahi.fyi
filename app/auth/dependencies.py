@@ -64,9 +64,6 @@ def get_optional_identity(
         return None
 
 def require_identity(request: Request, verifier: TokenVerifier = Depends(get_token_verifier), allowed_email: str = Depends(get_allowed_email)) -> Identity:
-    if os.getenv("DEV_AUTO_AUTH") == "true":
-        return Identity(uid=os.getenv("INGESTION_OWNER_UID") or "dev-learner", email=allowed_email)
-
     token = request.cookies.get("session")
     if not token:
         auth_header = request.headers.get("Authorization", "")
@@ -94,9 +91,6 @@ def require_csrf(
     identity: Identity = Depends(require_identity),
     secret: str = Depends(get_csrf_secret)
 ) -> bool:
-    if os.getenv("DEV_AUTO_AUTH") == "true":
-        return True
-
     token = request.headers.get("X-CSRF-Token")
     session_nonce = request.cookies.get("csrf_nonce")
     if not token:
