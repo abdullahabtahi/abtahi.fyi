@@ -35,17 +35,36 @@
 
           <p class="text-sm text-stone-600 leading-relaxed mb-6">{{ proposal.body }}</p>
 
-          <div class="pt-4 border-t border-stone-100 flex flex-wrap gap-2" data-csrf-token="{{ csrf_token }}">
-            {% for command, label in [("connect", "Connect"), ("defer", "Defer"), ("dismiss", "Dismiss")] %}
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
-              hx-post="/api/proposals/{{ proposal.id }}/{{ command }}"
-              hx-target="#proposal-{{ proposal.id }}"
-              hx-swap="outerHTML"
-              hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
-            >{{ label }}</button>
-            {% endfor %}
+          <div class="pt-4 border-t border-stone-100 space-y-3" data-csrf-token="{{ csrf_token }}">
+            <label class="block text-xs font-mono text-stone-500" for="reviewed-content-{{ proposal.id }}">Reviewed citation</label>
+            <textarea id="reviewed-content-{{ proposal.id }}" name="reviewed_content" class="w-full rounded border border-stone-300 p-2 text-sm" required>{{ proposal.proposed_cited_addition|default(proposal.body, true) }}</textarea>
+            <div class="flex flex-wrap gap-2">
+              {% for command, label in [("connect", "Connect"), ("edit", "Save edit"), ("dismiss", "Dismiss")] %}
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
+                hx-post="/api/proposals/{{ proposal.id }}/{{ command }}"
+                hx-include="#reviewed-content-{{ proposal.id }}"
+                hx-target="#proposal-{{ proposal.id }}"
+                hx-swap="outerHTML"
+                hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
+              >{{ label }}</button>
+              {% endfor %}
+              <select id="defer-window-{{ proposal.id }}" name="defer_window" class="rounded border border-stone-300 p-1 text-sm">
+                <option value="TOMORROW">Tomorrow</option>
+                <option value="NEXT_WEEK">Next week</option>
+                <option value="LATER">Later</option>
+              </select>
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded border border-stone-300 text-sm hover:bg-stone-50"
+                hx-post="/api/proposals/{{ proposal.id }}/defer"
+                hx-include="#defer-window-{{ proposal.id }}"
+                hx-target="#proposal-{{ proposal.id }}"
+                hx-swap="outerHTML"
+                hx-headers='js:{"Idempotency-Key": this.closest("[data-csrf-token]").dataset.idempotencyKey || (this.closest("[data-csrf-token]").dataset.idempotencyKey = crypto.randomUUID()), "X-CSRF-Token": this.closest("[data-csrf-token]").dataset.csrfToken}'
+              >Defer</button>
+            </div>
           </div>
         </article>
         {% endfor %}

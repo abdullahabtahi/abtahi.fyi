@@ -3,17 +3,17 @@ import os
 import sqlite3
 from collections.abc import Callable
 from fastapi.openapi.utils import get_openapi
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from app.auth.dependencies import auth_router
+from app.auth.dependencies import auth_router, auth_pages_router, get_optional_identity
 from app.api.routes_study import study_router
 from app.routers.syndication import router as syndication_router
 from app.routers.api_public import router as api_public_router
 from app.routers.admin import router as admin_router
 from app.core.readiness import ReadinessState
-from app.settings import Settings
+from app.settings import ConfigurationUnavailable, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -50,24 +50,46 @@ async def lifespan(app: FastAPI):
 
 
 def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
-    settings = Settings()
-    
     app = FastAPI(
         title="abtahi.fyi",
         description="Private Compiled Study Pilot",
         lifespan=lifespan
     )
+
+    @app.middleware("http")
+    async def attach_identity_middleware(request: Request, call_next):
+        try:
+            request.state.identity = get_optional_identity(request)
+        except Exception:
+            request.state.identity = None
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def security_headers_middleware(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
     
     # Mount Static Files
     static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
     os.makedirs(static_dir, exist_ok=True)
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
-    app.state.settings = settings
+    try:
+        app.state.settings = Settings()
+    except ConfigurationUnavailable:
+        app.state.settings = None
+        app.state.configuration_error = True
+    else:
+        app.state.configuration_error = False
     app.state.initialize_projection = initialize or initialize_projection
     app.state.readiness = ReadinessState()
 
     app.include_router(auth_router)
+    app.include_router(auth_pages_router)
     app.include_router(study_router)
     app.include_router(syndication_router)
     app.include_router(api_public_router)
@@ -75,7 +97,7 @@ def create_app(*, initialize: Callable[[], None] | None = None) -> FastAPI:
 
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
-        if not app.state.readiness.is_ready:
+        if app.state.configuration_error or not app.state.readiness.is_ready:
             return JSONResponse({"status": "unavailable"}, status_code=503)
         return JSONResponse({"status": "ok"})
 

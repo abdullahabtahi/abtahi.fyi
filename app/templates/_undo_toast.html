@@ -1,4 +1,12 @@
 <div id="undo-toast" hx-swap-oob="true" class="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded shadow-lg border border-gray-700" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)">
   <span>Proposal dismissed.</span>
-  <button class="ml-4 font-bold text-blue-400 hover:text-blue-300">Undo</button>
+  <button
+    type="button"
+    class="ml-4 font-bold text-blue-400 hover:text-blue-300"
+    hx-post="/api/proposals/{{ proposal_id }}/undo"
+    hx-vals='{"dismissal_operation_id": "{{ result.operation_key }}"}'
+    hx-target="#proposal-{{ proposal_id }}"
+    hx-swap="outerHTML"
+    hx-headers='js:{"Idempotency-Key": crypto.randomUUID(), "X-CSRF-Token": "{{ csrf_token }}"}'
+  >Undo</button>
 </div>

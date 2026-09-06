@@ -1,41 +1,76 @@
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
-import os
-from app.auth.dependencies import require_identity, require_csrf
-from app.domain.models import Identity
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+from app.auth.dependencies import require_job_identity
+from app.storage.archive import ArchiveUnavailable
+from app.services.ingestion import IngestionService
 
 router = APIRouter()
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates"))
-
-@router.get("/capture", response_class=HTMLResponse)
-async def get_capture(request: Request, identity: Identity = Depends(require_identity)):
-    # Stateful Copilot web authoring UI
-    return templates.TemplateResponse(request=request, name="capture.html", context={})
-
-@router.post("/api/poll-feeds")
-async def poll_feeds(request: Request, identity: Identity = Depends(require_identity), csrf_ok: bool = Depends(require_csrf)):
-    return JSONResponse(
-        status_code=501,
-        content={
-            "status": "unavailable",
-            "message": "Feed polling is unavailable until durable ingestion is configured.",
-        },
-    )
 
 from app.schemas.synthesis import ConsolidationReport, ConsolidationStatus
 from app.ai.synthesis import run_consolidation
 from app.core.network import network_cache
 from app.core.db import init_sqlite_db
 
+
+def get_ingestion_service() -> IngestionService:
+    try:
+        from firebase_admin import firestore
+        from google.cloud import storage
+
+        from app.adapters.firebase_auth import ensure_firebase_initialized
+        from app.core.firestore import FirestoreSourceMetadataStore
+        from app.models.feed import ApprovedFeed
+        from app.settings import Settings
+        from app.storage.archive import CloudStorageSourceArchive
+
+        settings = Settings()
+        feed_urls = tuple(
+            url.strip() for url in settings.APPROVED_FEED_URLS.split(",") if url.strip()
+        )
+        if not settings.INGESTION_OWNER_UID or not feed_urls:
+            raise ValueError("ingestion registry is not configured")
+        firebase_app = ensure_firebase_initialized()
+        feeds = tuple(
+            ApprovedFeed(id=f"feed-{index}", url=url)
+            for index, url in enumerate(feed_urls, start=1)
+        )
+        bucket = storage.Client(project=settings.GCP_PROJECT_ID).bucket(
+            settings.FIREBASE_STORAGE_BUCKET
+        )
+        return IngestionService(
+            CloudStorageSourceArchive(bucket),
+            FirestoreSourceMetadataStore(firestore.client(app=firebase_app)),
+            owner_uid=settings.INGESTION_OWNER_UID,
+            feeds=feeds,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ingestion service is unavailable",
+        ) from error
+
+
+@router.post("/api/poll-feeds")
+async def poll_registered_feeds(
+    job_authorized: bool = Depends(require_job_identity),
+    service: IngestionService = Depends(get_ingestion_service),
+):
+    try:
+        return await service.collect_registered_feeds()
+    except ArchiveUnavailable as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ingestion service is unavailable",
+        ) from error
+
 @router.post("/api/consolidate", response_model=ConsolidationReport)
 async def consolidate_graph(
     request: Request,
     dry_run: bool = False,
-    identity: Identity = Depends(require_identity),
+    job_authorized: bool = Depends(require_job_identity),
 ):
     """Triggers Nightly Graph Consolidation ('Dream Cycle').
-    
+
     Supports dry-run queries and returns a full ConsolidationReport.
     Protected by admin authentication / Cloud Scheduler bearer tokens.
     """
@@ -58,4 +93,3 @@ async def consolidate_graph(
         status_code=200,
         content=report.model_dump(mode="json"),
     )
-

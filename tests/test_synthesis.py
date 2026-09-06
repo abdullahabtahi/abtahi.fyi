@@ -224,10 +224,9 @@ async def test_theme_essay_generation_and_zero_token_preservation(temp_content_d
 
 @pytest.mark.asyncio
 async def test_post_consolidate_endpoint_dry_run_and_auth():
-    """T011: Verify POST /api/consolidate requires authentication and supports dry_run=true."""
+    """Verify POST /api/consolidate requires privileged job identity and supports dry run."""
     from app.web.app import create_app
-    from app.auth.dependencies import require_identity
-    from app.domain.models import Identity
+    from app.auth.dependencies import require_job_identity
     from httpx import AsyncClient, ASGITransport
 
     app = create_app()
@@ -235,10 +234,10 @@ async def test_post_consolidate_endpoint_dry_run_and_auth():
     # 1. Unauthenticated request without session or token should fail
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         unauth_resp = await ac.post("/api/consolidate?dry_run=true")
-        assert unauth_resp.status_code in (401, 303)
+        assert unauth_resp.status_code == 403
 
-    # 2. Authenticated request with dry_run=true
-    app.dependency_overrides[require_identity] = lambda: Identity(uid="admin-test", email="test@example.com")
+    # 2. Privileged job request with dry_run=true
+    app.dependency_overrides[require_job_identity] = lambda: True
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/consolidate?dry_run=true")
         assert resp.status_code == 200
@@ -604,7 +603,6 @@ async def test_end_to_end_consolidation_dream_cycle(isolated_db, temp_content_di
     assert second_report.metrics.themes_preserved >= 1
     assert fake_client.call_count == initial_llm_calls  # Zero new LLM calls consumed!
     assert second_report.duration_ms < 5000  # Well within target
-
 
 
 

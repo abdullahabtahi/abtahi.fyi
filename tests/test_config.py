@@ -87,3 +87,24 @@ def test_settings_session_expiry_bounds():
     os.environ["SESSION_EXPIRY_DAYS"] = "10"
     settings = Settings()
     assert settings.SESSION_EXPIRY_DAYS == 10
+
+
+def test_secret_provider_failure_is_a_typed_configuration_error(monkeypatch):
+    from app.settings import ConfigurationUnavailable
+
+    os.environ["GCP_PROJECT_ID"] = "test-project"
+    os.environ["ALLOWLISTED_EMAIL"] = "owner@example.com"
+
+    class FailingClient:
+        def access_secret_version(self, request):
+            raise RuntimeError("provider endpoint internal-secret-value failed")
+
+    monkeypatch.setattr(
+        "app.settings.secretmanager.SecretManagerServiceClient", lambda: FailingClient()
+    )
+
+    with pytest.raises(ConfigurationUnavailable) as exc_info:
+        Settings()
+
+    assert str(exc_info.value) == "configuration is unavailable"
+    assert "internal-secret-value" not in str(exc_info.value)

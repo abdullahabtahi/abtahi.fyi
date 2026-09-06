@@ -25,22 +25,37 @@ def get_secret(secret_id: str, default: str | None = None) -> str:
             return default
         raise RuntimeError(f"Failed to access secret {secret_id} from Secret Manager: {e}")
 
-def validate_outbound_url(url: str) -> bool:
-    """Returns whether a URL resolves exclusively to public HTTP(S) addresses."""
+class UnsafeOutboundTarget(ValueError):
+    """An outbound target is malformed or does not resolve exclusively publicly."""
+
+
+def validate_outbound_target(url: str, resolver=socket.getaddrinfo) -> str:
+    """Return a safe HTTP(S) URL after rejecting every non-public resolution."""
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        return False
+    if parsed.scheme.lower() not in ("http", "https") or parsed.username or parsed.password:
+        raise UnsafeOutboundTarget("unsupported outbound URL")
     hostname = parsed.hostname
     if not hostname:
-        return False
+        raise UnsafeOutboundTarget("outbound URL has no hostname")
 
     try:
-        addresses = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        addresses = resolver(hostname, None, type=socket.SOCK_STREAM)
     except socket.gaierror:
-        return False
+        raise UnsafeOutboundTarget("outbound hostname cannot be resolved") from None
 
     def is_public(address: tuple) -> bool:
         ip = ipaddress.ip_address(address[4][0])
         return ip.is_global and not ip.is_multicast
 
-    return bool(addresses) and all(is_public(address) for address in addresses)
+    if not addresses or not all(is_public(address) for address in addresses):
+        raise UnsafeOutboundTarget("outbound hostname is not exclusively public")
+    return url
+
+
+def validate_outbound_url(url: str) -> bool:
+    """Compatibility helper returning whether a target is safe to request."""
+    try:
+        validate_outbound_target(url)
+    except (UnsafeOutboundTarget, ValueError):
+        return False
+    return True

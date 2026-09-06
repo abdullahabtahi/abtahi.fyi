@@ -4,8 +4,10 @@ from app.domain.models import Identity, ForbiddenError
 def identity_from_claims(claims: dict, allowed_email: str) -> Identity:
     if not claims.get("email_verified"):
         raise ForbiddenError("Email not verified")
-    if claims.get("email") != allowed_email:
-        raise ForbiddenError("Email not allowlisted")
+    claims_email = (claims.get("email") or "").strip().lower()
+    target_email = allowed_email.strip().lower()
+    if not claims_email or claims_email != target_email:
+        raise ForbiddenError(f"Email '{claims.get('email')}' is not allowlisted")
     uid = claims.get("uid")
     if not uid:
         raise ForbiddenError("Identity missing uid")

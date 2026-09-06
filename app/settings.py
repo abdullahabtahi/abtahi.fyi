@@ -4,6 +4,15 @@ import os
 import json
 from google.cloud import secretmanager
 
+
+class ConfigurationUnavailable(Exception):
+    """Raised when required runtime configuration cannot be loaded safely."""
+
+    def __init__(self, reason: str = "configuration") -> None:
+        self.reason = reason
+        super().__init__("configuration is unavailable")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         extra="forbid",
@@ -17,13 +26,35 @@ class Settings(BaseSettings):
     ALLOWLISTED_EMAIL: str = Field(...)
     FIREBASE_COOKIE_NAME: str = Field(default="session")
     SESSION_EXPIRY_DAYS: int = Field(default=14)
+    JOB_AUTH_TOKEN: SecretStr | None = Field(default=None)
+    INGESTION_OWNER_UID: str = Field(default="")
+    APPROVED_FEED_URLS: str = Field(default="")
     
     # AI & Core Settings
     GEMINI_API_KEY: str | None = Field(default=None)
     GCP_LOCATION: str = Field(default="us-central1")
-    ALLOWED_LEARNER_EMAIL: str = Field(default="abdullah@example.com")
+    ALLOWED_LEARNER_EMAIL: str = Field(default="")
     PORT: int = Field(default=8000)
     ENV: str = Field(default="production")
+
+    # Firebase Web Client Configuration (loaded from environment or Secret Manager)
+    FIREBASE_API_KEY: str = Field(default="")
+    FIREBASE_AUTH_DOMAIN: str = Field(default="")
+    FIREBASE_PROJECT_ID: str = Field(default="")
+    FIREBASE_APP_ID: str = Field(default="")
+    FIREBASE_STORAGE_BUCKET: str = Field(default="")
+
+    @model_validator(mode='after')
+    def default_firebase_fields(self) -> 'Settings':
+        if not self.FIREBASE_PROJECT_ID and self.GCP_PROJECT_ID:
+            self.FIREBASE_PROJECT_ID = self.GCP_PROJECT_ID
+        if not self.FIREBASE_AUTH_DOMAIN and self.GCP_PROJECT_ID:
+            self.FIREBASE_AUTH_DOMAIN = f"{self.GCP_PROJECT_ID}.firebaseapp.com"
+        if not self.FIREBASE_STORAGE_BUCKET and self.GCP_PROJECT_ID:
+            self.FIREBASE_STORAGE_BUCKET = f"{self.GCP_PROJECT_ID}.firebasestorage.app"
+        if not self.ALLOWED_LEARNER_EMAIL and self.ALLOWLISTED_EMAIL:
+            self.ALLOWED_LEARNER_EMAIL = self.ALLOWLISTED_EMAIL
+        return self
 
     @model_validator(mode='before')
     @classmethod
@@ -37,8 +68,8 @@ class Settings(BaseSettings):
                     name = f"projects/{project_id}/secrets/CSRF_SECRET/versions/latest"
                     response = client.access_secret_version(request={"name": name})
                     data['CSRF_SECRET'] = response.payload.data.decode("UTF-8")
-                except Exception:
-                    pass # Let pydantic catch the missing field
+                except Exception as error:
+                    raise ConfigurationUnavailable() from error
         return data
 
     @field_validator("SESSION_EXPIRY_DAYS")

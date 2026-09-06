@@ -12,3 +12,18 @@ def test_healthz_is_unavailable_after_initialization_failure() -> None:
 
     assert response.status_code == 503
     assert response.json() == {"status": "unavailable"}
+
+
+def test_create_app_surfaces_invalid_configuration_as_unavailable(monkeypatch) -> None:
+    from app.settings import ConfigurationUnavailable
+
+    monkeypatch.setattr(
+        "app.web.app.Settings",
+        lambda: (_ for _ in ()).throw(ConfigurationUnavailable("configuration is unavailable")),
+    )
+
+    with TestClient(create_app(initialize=lambda: None)) as client:
+        response = client.get("/healthz")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}

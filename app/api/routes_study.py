@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
@@ -11,7 +12,9 @@ from app.core.firestore import (
     ReviewStore,
     ReviewStoreUnavailable,
 )
-from app.domain.models import DecisionCommand, Identity
+from app.domain.models import DecisionCommand, DeferredWindow, Identity
+from app.models.feed import ConsentDecision
+from app.services.consent import ConsentService, ConsentStore, ConsentUnavailable
 from app.services.review import ReviewService
 
 study_router = APIRouter(tags=["Study"])
@@ -23,12 +26,29 @@ templates = Jinja2Templates(
 def get_review_store() -> ReviewStore:
     try:
         from firebase_admin import firestore
+        from app.adapters.firebase_auth import ensure_firebase_initialized
 
-        return FirestoreReviewStore(firestore.client())
+        app = ensure_firebase_initialized()
+        return FirestoreReviewStore(firestore.client(app=app))
     except Exception as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="review storage is unavailable",
+        ) from error
+
+
+def get_consent_store() -> ConsentStore:
+    try:
+        from firebase_admin import firestore
+        from app.adapters.firebase_auth import ensure_firebase_initialized
+        from app.core.firestore import FirestoreConsentStore
+
+        app = ensure_firebase_initialized()
+        return FirestoreConsentStore(firestore.client(app=app))
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="consent storage is unavailable",
         ) from error
 
 
@@ -96,11 +116,34 @@ async def _decide(
 ):
     key = _idempotency_key(request)
     form = await request.form()
-    reviewed_content = form.get("reviewed_content")
-    if command is DecisionCommand.EDIT and not reviewed_content:
+    reviewed_content = str(form.get("reviewed_content", "")).strip() or None
+    defer_window_value = str(form.get("defer_window", "")).strip()
+    dismissal_operation_id = str(form.get("dismissal_operation_id", "")).strip() or None
+    if command in {DecisionCommand.CONNECT, DecisionCommand.EDIT} and not reviewed_content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="reviewed_content is required for edits",
+            detail="reviewed_content is required",
+        )
+    try:
+        defer_window = (
+            DeferredWindow(defer_window_value)
+            if command is DecisionCommand.DEFER
+            else None
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="defer_window is required",
+        ) from error
+    if command is DecisionCommand.DEFER and defer_window is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="defer_window is required",
+        )
+    if command is DecisionCommand.UNDO and dismissal_operation_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="dismissal_operation_id is required",
         )
     try:
         result = await ReviewService(store).decide(
@@ -108,7 +151,9 @@ async def _decide(
             proposal_id,
             command,
             key,
-            reviewed_content=str(reviewed_content) if reviewed_content else None,
+            reviewed_content=reviewed_content,
+            defer_window=defer_window,
+            dismissal_operation_id=dismissal_operation_id,
         )
     except IdempotencyConflict as error:
         raise HTTPException(
@@ -129,7 +174,11 @@ async def _decide(
     return templates.TemplateResponse(
         request=request,
         name="_review_result.html",
-        context={"result": result, "proposal_id": proposal_id},
+        context={
+            "result": result,
+            "proposal_id": proposal_id,
+            "csrf_token": await _private_csrf_token(request, identity),
+        },
     )
 
 
@@ -164,6 +213,17 @@ async def dismiss_proposal(
     store: ReviewStore = Depends(get_review_store),
 ):
     return await _decide(request, proposal_id, DecisionCommand.DISMISS, identity, store)
+
+
+@study_router.post("/api/proposals/{proposal_id}/undo", response_class=HTMLResponse)
+async def undo_proposal(
+    proposal_id: str,
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    csrf_ok: bool = Depends(require_csrf),
+    store: ReviewStore = Depends(get_review_store),
+):
+    return await _decide(request, proposal_id, DecisionCommand.UNDO, identity, store)
 
 
 @study_router.post("/api/proposals/{proposal_id}/edit", response_class=HTMLResponse)
@@ -220,6 +280,47 @@ async def sources_view(
         name="sources.html",
         context={"csrf_token": await _private_csrf_token(request, identity)},
     )
+
+
+@study_router.post("/api/source-revisions/{revision_id}/consent")
+async def record_source_consent(
+    revision_id: str,
+    request: Request,
+    identity: Identity = Depends(require_identity),
+    csrf_ok: bool = Depends(require_csrf),
+    store: ConsentStore = Depends(get_consent_store),
+):
+    _idempotency_key(request)
+    form = await request.form()
+    purpose = str(form.get("purpose", "")).strip()
+    provider = str(form.get("provider", "")).strip()
+    granted_value = str(form.get("granted", "")).strip().lower()
+    if not purpose or not provider or granted_value not in {"true", "false"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="purpose, provider, and granted are required",
+        )
+    decision = ConsentDecision(
+        uid=identity.uid,
+        revision_id=revision_id,
+        purpose=purpose,
+        provider=provider,
+        granted=granted_value == "true",
+        decided_at=datetime.now(timezone.utc),
+    )
+    try:
+        await ConsentService(store).record(decision)
+    except ConsentUnavailable as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="consent storage is unavailable",
+        ) from error
+    return {
+        "revision_id": decision.revision_id,
+        "purpose": decision.purpose,
+        "provider": decision.provider,
+        "granted": decision.granted,
+    }
 
 
 @study_router.post("/api/reflections", response_class=HTMLResponse)

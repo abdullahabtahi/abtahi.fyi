@@ -1,10 +1,12 @@
 import json
-import sqlite3
 import uuid
+import asyncio
+import inspect
 from typing import Any, Protocol
 
 from google import genai
 from pydantic import BaseModel
+from pydantic import ConfigDict, ValidationError
 
 from app.domain.models import (
     ConnectionProposal,
@@ -28,7 +30,29 @@ class SourceConsentStore(Protocol):
     def has_external_model_consent(self, source_revision_id: str) -> bool:
         ...
 
+
+def _has_exact_consent(
+    consent_store: Any,
+    source_revision_id: str,
+    *,
+    uid: str,
+    purpose: str,
+    provider: str,
+) -> bool:
+    if hasattr(consent_store, "has_active_grant"):
+        outcome = consent_store.has_active_grant(uid, source_revision_id, purpose, provider)
+        if inspect.isawaitable(outcome):
+            try:
+                outcome = asyncio.run(outcome)
+            except RuntimeError as error:
+                raise SourceConsentError(
+                    "async consent must be resolved before synchronous proposal generation"
+                ) from error
+        return bool(outcome)
+    return bool(consent_store.has_external_model_consent(source_revision_id))
+
 class ProposerOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
     edge_type: EdgeType
     match_strength: MatchStrength
     excerpt: str
@@ -43,10 +67,17 @@ def generate_proposal(
     chunk_text: str,
     consent_store: SourceConsentStore | None = None,
     client: Any = None,
+    *,
+    uid: str = "",
+    purpose: str = "proposal",
+    provider: str = "google-genai",
+    concept_id: str | None = None,
 ) -> ConnectionProposal:
     if (
         consent_store is None
-        or not consent_store.has_external_model_consent(source_chunk_id)
+        or not _has_exact_consent(
+            consent_store, source_chunk_id, uid=uid, purpose=purpose, provider=provider
+        )
     ):
         raise SourceConsentError(
             "source revision has not granted consent for external model processing"
@@ -55,19 +86,8 @@ def generate_proposal(
     # We fence the input properly (T013)
     fenced_chunk = f"<untrusted_content>\n{chunk_text}\n</untrusted_content>"
     
-    # 1. Retrieve top-K from vec_concepts (T008)
-    conn = sqlite3.connect("database.sqlite")
-    cursor = conn.cursor()
-    
-    # Mocking vector for now; in a real scenario we would compute embeddings first
-    # using genai.models.embed_content.
-    mock_vector = "[0.1, 0.2, 0.3]"
-    cursor.execute(
-        "SELECT rowid, distance FROM vec_concepts WHERE embedding MATCH ? ORDER BY distance LIMIT 3", 
-        (mock_vector,)
-    )
-    results = cursor.fetchall()
-    concept_id = "concept_123" if results else "mock_concept"
+    if not concept_id:
+        raise ProvenanceError("proposal requires a known concept identifier")
     
     # 2. Query Gemini (T009)
     # Prefer Vertex AI using GCP project credentials, fallback to AI Studio or mocked Client
@@ -105,10 +125,13 @@ def generate_proposal(
         }
     )
     
-    data = json.loads(response.text)
+    try:
+        data = ProposerOutput.model_validate_json(response.text)
+    except (ValidationError, ValueError, json.JSONDecodeError) as error:
+        raise UntrustedContentError("model returned an invalid proposal") from error
     
     # Extract the quote
-    excerpt = data.get("excerpt", "")
+    excerpt = data.excerpt
     
     # 3. Provenance and guardrails validation (T014, T015)
     if excerpt not in chunk_text:
@@ -123,14 +146,14 @@ def generate_proposal(
         id=str(uuid.uuid4()),
         source_revision_id=source_chunk_id,
         concept_id=concept_id,
-        edge_type=data.get("edge_type"),
-        match_strength=data.get("match_strength"),
+        edge_type=data.edge_type,
+        match_strength=data.match_strength,
         excerpt=excerpt,
-        location=data.get("location"),
-        rationale=data.get("rationale"),
-        uncertainty=data.get("uncertainty"),
-        learning_payoff=data.get("learning_payoff"),
-        proposed_cited_addition=data.get("proposed_cited_addition"),
+        location=data.location,
+        rationale=data.rationale,
+        uncertainty=data.uncertainty,
+        learning_payoff=data.learning_payoff,
+        proposed_cited_addition=data.proposed_cited_addition,
         status=ProposalStatus.PENDING # T010
     )
     

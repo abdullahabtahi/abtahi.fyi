@@ -36,6 +36,7 @@ class DecisionCommand(StrEnum):
     DEFER = "DEFER"
     DISMISS = "DISMISS"
     EDIT = "EDIT"
+    UNDO = "UNDO"
 
 
 class DeferredWindow(StrEnum):
@@ -74,6 +75,11 @@ class ConnectionProposal(BaseModel):
     distinction_impact: NonEmptyText | None = None
     final_reviewed_content: NonEmptyText | None = None
     status: ProposalStatus = ProposalStatus.PENDING
+    revision: int = 0
+    defer_window: DeferredWindow | None = None
+    defer_until: datetime | None = None
+    reviewed_at: datetime | None = None
+    dismissal_operation_id: NonEmptyText | None = None
 
     @model_validator(mode="after")
     def validate_match_and_final_content(self) -> "ConnectionProposal":
@@ -88,6 +94,10 @@ class ConnectionProposal(BaseModel):
             and self.final_reviewed_content is None
         ):
             raise ValueError("connected proposals require final reviewed content")
+        if self.status is ProposalStatus.DEFERRED and (
+            self.defer_window is None or self.defer_until is None
+        ):
+            raise ValueError("deferred proposals require a review window and due date")
         return self
 
 

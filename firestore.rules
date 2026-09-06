@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Zero-Trust Security Architecture:
+    // All Firestore reads and writes are strictly mediated by the backend server
+    // via Firebase Admin SDK (which bypasses client security rules). Direct client-side
+    // SDK reads and writes from the browser are denied unconditionally.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

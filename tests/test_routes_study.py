@@ -77,6 +77,34 @@ def test_submit_reflection_requires_idempotency_key(test_client):
     assert response.status_code == 400
 
 
+def test_source_revision_consent_is_private_csrf_protected_and_owner_scoped(test_client):
+    from app.api.routes_study import get_consent_store
+
+    class ConsentStore:
+        def __init__(self) -> None:
+            self.decisions = []
+
+        async def append(self, decision):
+            self.decisions.append(decision)
+
+        async def latest(self, uid, revision_id, purpose, provider):
+            return None
+
+    client, _ = test_client
+    store = ConsentStore()
+    client.app.dependency_overrides[get_consent_store] = lambda: store
+
+    response = client.post(
+        "/api/source-revisions/revision-1/consent",
+        data={"purpose": "proposal", "provider": "google-genai", "granted": "true"},
+        headers={"Idempotency-Key": "consent-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["granted"] is True
+    assert store.decisions[0].uid == "test-user"
+
+
 def test_connect_requires_idempotency_key(test_client):
     client, store = test_client
     response = client.post("/api/proposals/p1/connect")
@@ -87,8 +115,12 @@ def test_connect_reuses_saved_result_for_the_same_key(test_client):
     client, store = test_client
     headers = {"Idempotency-Key": "operation-1"}
 
-    first = client.post("/api/proposals/p1/connect", headers=headers)
-    repeated = client.post("/api/proposals/p1/connect", headers=headers)
+    first = client.post(
+        "/api/proposals/p1/connect", data={"reviewed_content": "Evidence"}, headers=headers
+    )
+    repeated = client.post(
+        "/api/proposals/p1/connect", data={"reviewed_content": "Evidence"}, headers=headers
+    )
 
     assert first.status_code == 200
     assert repeated.status_code == 200
@@ -96,15 +128,67 @@ def test_connect_reuses_saved_result_for_the_same_key(test_client):
     assert len(store.operations) == 1
 
 
+def test_connect_requires_reviewed_content(test_client):
+    client, _ = test_client
+
+    response = client.post(
+        "/api/proposals/p1/connect",
+        headers={"Idempotency-Key": "operation-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "reviewed_content is required"
+
+
 def test_defer_returns_truthful_saved_outcome(test_client):
     client, store = test_client
 
     response = client.post(
-        "/api/proposals/p1/defer", headers={"Idempotency-Key": "operation-1"}
+        "/api/proposals/p1/defer",
+        data={"defer_window": "TOMORROW"},
+        headers={"Idempotency-Key": "operation-1"},
     )
 
     assert response.status_code == 200
     assert "Deferred" in response.text
+
+
+def test_defer_requires_a_valid_window(test_client):
+    client, _ = test_client
+
+    response = client.post(
+        "/api/proposals/p1/defer",
+        data={"defer_window": "NOT_A_WINDOW"},
+        headers={"Idempotency-Key": "operation-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "defer_window is required"
+
+
+def test_undo_route_is_available(test_client):
+    client, _ = test_client
+
+    response = client.post(
+        "/api/proposals/p1/undo",
+        data={"dismissal_operation_id": "dismiss-1"},
+        headers={"Idempotency-Key": "operation-2"},
+    )
+
+    assert response.status_code != 404
+
+
+def test_dismiss_result_includes_csrf_protected_undo_control(test_client):
+    client, _ = test_client
+
+    response = client.post(
+        "/api/proposals/p1/dismiss", headers={"Idempotency-Key": "dismiss-1"}
+    )
+
+    assert response.status_code == 200
+    assert 'hx-post="/api/proposals/p1/undo"' in response.text
+    assert "dismissal_operation_id" in response.text
+    assert "X-CSRF-Token" in response.text
 
 
 def test_store_failure_returns_retryable_response_not_success(test_client):
@@ -112,7 +196,9 @@ def test_store_failure_returns_retryable_response_not_success(test_client):
     store.unavailable = True
 
     response = client.post(
-        "/api/proposals/p1/connect", headers={"Idempotency-Key": "operation-1"}
+        "/api/proposals/p1/connect",
+        data={"reviewed_content": "Evidence"},
+        headers={"Idempotency-Key": "operation-1"},
     )
 
     assert response.status_code == 503

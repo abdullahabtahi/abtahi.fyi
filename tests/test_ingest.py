@@ -209,6 +209,7 @@ async def test_process_feed():
               <title>Example Feed</title>
               <entry>
                 <title>Test Entry</title>
+                <link href="https://example.com/test-entry" />
                 <content type="html"><![CDATA[<p>This is a <b>test</b>.</p>]]></content>
               </entry>
             </feed>""",

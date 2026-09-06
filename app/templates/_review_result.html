@@ -5,3 +5,6 @@
     Reflection saved
   {% endif %}
 </div>
+{% if result.record.user_decision and result.record.user_decision.value == "DISMISS" %}
+{% include "_undo_toast.html" %}
+{% endif %}

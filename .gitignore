@@ -48,7 +48,7 @@ ehthumbs.db
 Thumbs.db
 
 # ── Editor / IDE ───────────────────────────────────────────────────────────────
-.vscode/settings.json
+.vscode/
 .idea/
 *.swp
 *.swo
@@ -57,6 +57,7 @@ Thumbs.db
 # ── Legacy paths ───────────────────────────────────────────────────────────────
 .superpowers/sdd/
 .worktrees/
+docs/superpowers/
 
 # ── Node (Tailwind CLI build artefacts) ────────────────────────────────────────
 node_modules/

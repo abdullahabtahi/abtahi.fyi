@@ -50,9 +50,29 @@
                     class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors">Timeline</a>
                 <a href="/graph"
                     class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors">Graph</a>
-                {% if identity is defined and identity %}
+                {% set user = request.state.identity if (request is defined and request.state is defined and request.state.identity) else (identity if identity is defined else None) %}
+                {% if user %}
                 <a href="/today"
-                    class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors">Study</a>
+                    class="text-stone-900 dark:text-stone-100 font-semibold no-underline transition-colors flex items-center gap-1.5"
+                    title="Private Study Layer">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Study
+                </a>
+                <div class="flex items-center gap-2 pl-2 border-l border-stone-200 dark:border-stone-800">
+                    <span class="text-xs text-stone-400 dark:text-stone-500 font-mono hidden sm:inline truncate max-w-[130px]" title="{{ user.email }}">{{ user.email }}</span>
+                    <a href="/logout"
+                        hx-boost="false"
+                        class="text-xs text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 no-underline transition-colors py-1 px-2 rounded hover:bg-stone-100 dark:hover:bg-stone-900"
+                        title="Sign Out">Sign Out</a>
+                </div>
+                {% else %}
+                <a href="/sign-in"
+                    hx-boost="false"
+                    class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 no-underline transition-colors py-1 px-2.5 rounded border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 text-xs flex items-center gap-1.5"
+                    id="nav-signin-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    Sign In
+                </a>
                 {% endif %}
                 <a href="/search"
                     class="text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 no-underline transition-colors"
@@ -98,17 +118,15 @@
 
     <footer class="border-t border-stone-200 dark:border-stone-800 py-8 mt-16 transition-colors duration-200">
         <div
-            class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs text-stone-400 font-mono">
-            <div class="tabular-nums">&copy; 2026 abtahi.fyi</div>
-            <div class="flex items-center gap-5 flex-wrap">
-                <a href="/about"
-                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">About</a>
-                <a href="/feed.json"
-                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">JSON Feed</a>
-                <a href="/feed.xml"
-                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Atom</a>
+            class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 dark:text-stone-500 font-mono gap-4">
+            <p>© 2026 Abdullah Abtahi. Systems Scriptorium.</p>
+            <div class="flex items-center gap-6">
                 <a href="/llms.txt"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">llms.txt</a>
+                <a href="/feed.json"
+                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Feed</a>
+                <a href="/connected"
+                    class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Centers</a>
                 <a href="/tensions"
                     class="hover:text-stone-700 dark:hover:text-stone-300 transition-colors no-underline">Tensions</a>
                 <a href="/themes"
@@ -118,37 +136,43 @@
     </footer>
 
     <script>
-        lucide.createIcons();
-        document.body.addEventListener('htmx:afterSwap', function () {
-            lucide.createIcons();
-        });
-
-        // Theme Toggle Logic
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-        // Set initial icon based on theme
-        if (document.documentElement.classList.contains('dark')) {
-            themeToggleLightIcon.classList.remove('hidden');
-        } else {
-            themeToggleDarkIcon.classList.remove('hidden');
-        }
-
-        themeToggleBtn.addEventListener('click', function () {
-            // Toggle icons
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-
-            // If is dark mode
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
+        (function() {
+            if (window.lucide) {
+                lucide.createIcons();
             }
-        });
+            document.body.addEventListener('htmx:afterSwap', function () {
+                if (window.lucide) lucide.createIcons();
+            });
+
+            // Theme Toggle Logic safely scoped
+            var btn = document.getElementById('theme-toggle');
+            var darkIcon = document.getElementById('theme-toggle-dark-icon');
+            var lightIcon = document.getElementById('theme-toggle-light-icon');
+
+            if (btn && !btn.dataset.themeInit) {
+                btn.dataset.themeInit = 'true';
+                if (document.documentElement.classList.contains('dark')) {
+                    lightIcon?.classList.remove('hidden');
+                    darkIcon?.classList.add('hidden');
+                } else {
+                    darkIcon?.classList.remove('hidden');
+                    lightIcon?.classList.add('hidden');
+                }
+
+                btn.addEventListener('click', function () {
+                    darkIcon?.classList.toggle('hidden');
+                    lightIcon?.classList.toggle('hidden');
+
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 
