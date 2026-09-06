@@ -2,7 +2,7 @@
 
 # 🏛️ abtahi.fyi
 
-### *The Systems Scriptorium: An Evidence-Grounded Knowledge Graph & Learning Sanctuary Powered by Google Gemini*
+### *The Systems Scriptorium: An Evidence-Grounded Knowledge Graph & Learning Sanctuary Powered by Google Cloud Run*
 
 [![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-Verified_Deploy-4285F4?logo=googlecloud&logoColor=white)](https://abtahi-fyi-qvj33q6t2a-uc.a.run.app)
 [![Gemini API](https://img.shields.io/badge/Gemini_API-Multi--Turn_Reasoning-8E75B2?logo=google&logoColor=white)](https://ai.google.dev/)
